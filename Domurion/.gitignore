@@ -1,0 +1,21 @@
+# User secrets, environment files
+.env
+/Domurion.Tests/.env
+
+# Build output
+bin/
+obj/
+
+# VS Code settings
+.vscode/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+
+# Other common ignores
+*.user
+*.suo
+*.log
+*.vs/
+TestResults/
