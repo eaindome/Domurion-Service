@@ -36,5 +36,10 @@ namespace Domurion.Services
                 return user;
             return null;
         }
+
+        public User? GetByUsername(string username)
+        {
+            return _context.Users.FirstOrDefault(u => u.Username == username);
+        }
     }
 }

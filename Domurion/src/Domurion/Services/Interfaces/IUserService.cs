@@ -6,5 +6,6 @@ namespace Domurion.Services
     {
         User Register(string username, string password);
         User? Login(string username, string password);
+        User? GetByUsername(string username);
     }
 }

@@ -2,7 +2,7 @@ using Domurion.Services;
 using Domurion.Data;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.RateLimiting;
+using Fido2NetLib;
 using System.Threading.RateLimiting;
 
 Env.Load();
@@ -33,6 +33,15 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 });
+
+// Configure FIDO2
+builder.Services.AddSingleton<Fido2>(sp =>
+    new Fido2(new Fido2Configuration
+    {
+        ServerDomain = "localhost", // or domain
+        ServerName = "Domurion",
+        Origins = new HashSet<string> { "https://localhost:5001" } // or origins
+    }));
 
 var app = builder.Build();
 
