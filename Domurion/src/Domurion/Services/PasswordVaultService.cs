@@ -1,4 +1,5 @@
 using Domurion.Models;
+using Domurion.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 using Domurion.Data;
@@ -15,13 +16,21 @@ namespace Domurion.Services
             if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Site, username, and password are required.");
 
+            if (!Helper.IsStrongPassword(password))
+                throw new ArgumentException("Password does not meet strength requirements.");
+
             var encryptedPassword = EncryptPassword(password);
+            var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
+            if (string.IsNullOrWhiteSpace(hmacKey))
+                throw new InvalidOperationException("HMAC_KEY environment variable is not set.");
+            var integrityHash = Helper.ComputeHmac(encryptedPassword, hmacKey);
             var credential = new Credential
             {
                 UserId = userId,
                 Site = site,
                 Username = username,
-                EncryptedPassword = encryptedPassword
+                EncryptedPassword = encryptedPassword,
+                IntegrityHash = integrityHash
             };
             _context.Credentials.Add(credential);
             _context.SaveChanges();
@@ -35,9 +44,20 @@ namespace Domurion.Services
 
         public string RetrievePassword(Guid credentialId, Guid userId)
         {
+            var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
+            if (string.IsNullOrWhiteSpace(hmacKey))
+                throw new InvalidOperationException("HMAC_KEY environment variable is not set.");
+            var expectedHash = Helper.ComputeHmac(
+                _context.Credentials
+                    .Where(c => c.Id == credentialId && c.UserId == userId)
+                    .Select(c => c.EncryptedPassword)
+                    .FirstOrDefault() ?? string.Empty,
+                hmacKey);
             var credential = _context.Credentials
                 .FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)
                 ?? throw new KeyNotFoundException("Credential not found.");
+            if (credential.IntegrityHash != expectedHash)
+                throw new InvalidOperationException("Data integrity check failed.");
             return DecryptPassword(credential.EncryptedPassword);
         }
 

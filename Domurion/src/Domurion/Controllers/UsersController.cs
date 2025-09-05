@@ -1,18 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Domurion.Services;
 using Domurion.Dtos;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UsersController : ControllerBase
+    [EnableRateLimiting("fixed")]
+    public class UsersController(IUserService userService) : ControllerBase
     {
-        private readonly IUserService _userService;
-        public UsersController(IUserService userService)
-        {
-            _userService = userService;
-        }
+        private readonly IUserService _userService = userService;
 
         [HttpPost("register")]
         public IActionResult Register([FromBody] UserDto userDto)
