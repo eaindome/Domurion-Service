@@ -1,7 +1,5 @@
 using Domurion.Models;
 using Domurion.Helpers;
-using System.Security.Cryptography;
-using System.Text;
 using Domurion.Data;
 using Domurion.Services.Interfaces;
 
@@ -11,7 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
-        public Credential AddCredential(Guid userId, string site, string username, string password)
+        public Credential AddCredential(Guid userId, string site, string username, string password, string? ipAddress = null)
         {
             if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Site, username, and password are required.");
@@ -34,6 +32,9 @@ namespace Domurion.Services
             };
             _context.Credentials.Add(credential);
             _context.SaveChanges();
+            // Audit log
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credential.Id, "AddCredential", ipAddress, site);
             return credential;
         }
 
@@ -42,7 +43,7 @@ namespace Domurion.Services
             return [.. _context.Credentials.Where(c => c.UserId == userId)];
         }
 
-        public string RetrievePassword(Guid credentialId, Guid userId)
+        public string RetrievePassword(Guid credentialId, Guid userId, string? ipAddress = null)
         {
             var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
             if (string.IsNullOrWhiteSpace(hmacKey))
@@ -58,7 +59,49 @@ namespace Domurion.Services
                 ?? throw new KeyNotFoundException("Credential not found.");
             if (credential.IntegrityHash != expectedHash)
                 throw new InvalidOperationException("Data integrity check failed.");
+            // Audit log
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
             return DecryptPassword(credential.EncryptedPassword);
+        }
+        
+        public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? ipAddress = null)
+        {
+            var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)
+                ?? throw new KeyNotFoundException("Credential not found.");
+
+            if (site != null)
+                credential.Site = site;
+            if (username != null)
+                credential.Username = username;
+            if (password != null)
+            {
+                if (!Helper.IsStrongPassword(password))
+                    throw new ArgumentException("Password does not meet strength requirements.");
+                var encryptedPassword = EncryptPassword(password);
+                credential.EncryptedPassword = encryptedPassword;
+                var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
+                if (string.IsNullOrWhiteSpace(hmacKey))
+                    throw new InvalidOperationException("HMAC_KEY environment variable is not set.");
+                credential.IntegrityHash = Helper.ComputeHmac(encryptedPassword, hmacKey);
+            }
+
+            _context.SaveChanges();
+            // Audit log
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "UpdateCredential", ipAddress, credential.Site);
+            return credential;
+        }
+
+        public void DeleteCredential(Guid credentialId, Guid userId, string? ipAddress = null)
+        {
+            var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)
+                ?? throw new KeyNotFoundException("Credential not found.");
+            _context.Credentials.Remove(credential);
+            _context.SaveChanges();
+            // Audit log
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "DeleteCredential", ipAddress, credential.Site);
         }
 
         private static string EncryptPassword(string password)
