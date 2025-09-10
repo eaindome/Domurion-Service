@@ -73,6 +73,43 @@ namespace Domurion.Tests
         }
         #endregion
 
+        #region DeleteUser
+        [Fact]
+        public void DeleteUser_RemovesUser()
+        {
+            var context = CreateInMemoryContext();
+            var service = new Services.UserService(context);
+            var user = service.Register("todelete", "StrongP@ssw0rd!");
+            service.DeleteUser(user.Id);
+            Assert.Null(service.GetByUsername("todelete"));
+        }
+
+        [Fact]
+        public void DeleteUser_RemovesCredentials()
+        {
+            var context = CreateInMemoryContext();
+            var userService = new Services.UserService(context);
+            var vaultService = new Services.PasswordVaultService(context);
+            var user = userService.Register("todelete", "StrongP@ssw0rd!");
+            // Set required env vars for vault service
+            Environment.SetEnvironmentVariable("AES_KEY", Convert.ToBase64String(new byte[32]));
+            Environment.SetEnvironmentVariable("AES_IV", Convert.ToBase64String(new byte[16]));
+            Environment.SetEnvironmentVariable("HMAC_KEY", Convert.ToBase64String(new byte[32]));
+            vaultService.AddCredential(user.Id, "site.com", "user", "StrongP@ssw0rd!");
+            userService.DeleteUser(user.Id);
+            Assert.Empty(context.Credentials.Where(c => c.UserId == user.Id));
+        }
+
+        [Fact]
+        public void DeleteUser_UserNotFound_Throws()
+        {
+            var context = CreateInMemoryContext();
+            var service = new Services.UserService(context);
+            var missingId = Guid.NewGuid();
+            Assert.Throws<KeyNotFoundException>(() => service.DeleteUser(missingId));
+        }
+        #endregion
+
         #region Login Tests
         [Fact]
         public void Login_WithCorrectCredentials_ShouldReturnUser()
