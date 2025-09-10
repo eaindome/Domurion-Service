@@ -1,17 +1,14 @@
 using Domurion.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Domurion.Dtos;
 
 namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class VaultController : ControllerBase
+    public class VaultController(IPasswordVaultService passwordVaultService) : ControllerBase
     {
-        private readonly IPasswordVaultService _passwordVaultService;
-
-        public VaultController(IPasswordVaultService passwordVaultService)
-        {
-            _passwordVaultService = passwordVaultService;
-        }
+        private readonly IPasswordVaultService _passwordVaultService = passwordVaultService;
 
         [HttpPost("add")]
         public IActionResult Add(Guid userId, string site, string username, string password)
