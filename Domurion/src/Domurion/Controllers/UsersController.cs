@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
-using Domurion.Services;
 using Domurion.Dtos;
-using Microsoft.AspNetCore.RateLimiting;
+using Domurion.Helpers;
 
 namespace Domurion.Controllers
 {
@@ -43,6 +41,49 @@ namespace Domurion.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpPut("update")]
+        public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
+        {
+            try
+            {
+                var user = _userService.UpdateUser(userId, newUsername, newPassword);
+                return Ok(new { user.Id, user.Username });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("generate-password")]
+        public IActionResult GeneratePassword([FromQuery] int length = 16)
+        {
+            var password = Helper.GeneratePassword(length);
+            return Ok(new { password });
+        }
+
+        [HttpDelete("delete")]
+        public IActionResult Delete(Guid userId)
+        {
+            try
+            {
+                _userService.DeleteUser(userId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
             }
         }
     }
