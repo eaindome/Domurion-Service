@@ -3,8 +3,12 @@
   import { goto } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
   
+  import VaultItemRow from '$lib/components/VaultItemRow.svelte';
+  import type { VaultItem } from '$lib/types';
+  // import { maskPassword, getSiteFavicon } from '../../utils/helpers';
+
   // Mock data - replace with actual API calls
-  let vaultItems = [
+  let vaultItems: VaultItem[] = [
     {
       id: 1,
       siteName: 'Google',
@@ -39,7 +43,7 @@
   
   let searchQuery = '';
   let showDeleteModal = false;
-  let itemToDelete: typeof vaultItems[0] | null = null;
+  let itemToDelete: VaultItem | null = null;
   let isLoading = false;
   
   // User info - you'll get this from your auth store
@@ -73,19 +77,14 @@
     }
   }
   
-  function maskPassword(password: string) {
-    return '●'.repeat(password.length);
-  }
-  
   function copyToClipboard(text: string, type: string) {
     navigator.clipboard.writeText(text).then(() => {
-      // You can show a toast notification here
       toast.show('Copied to clipboard', 'success');
       console.log(`${type} copied to clipboard`);
     });
   }
   
-  function confirmDelete(item: typeof vaultItems[0]) {
+  function confirmDelete(item: VaultItem) {
     itemToDelete = item;
     showDeleteModal = true;
   }
@@ -108,10 +107,6 @@
   function logout() {
     // TODO: Clear auth store and redirect
     goto('/login');
-  }
-  
-  function getSiteFavicon(siteUrl: string) {
-    return `https://www.google.com/s2/favicons?domain=${siteUrl}&sz=32`;
   }
 </script>
 
@@ -249,92 +244,11 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div class="divide-y divide-gray-100">
             {#each filteredItems as item (item.id)}
-              <div class="p-6 hover:bg-gray-50 transition-colors">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-4 flex-1">
-                    <!-- Site Icon -->
-                    <div class="flex-shrink-0">
-                      <img 
-                        src={getSiteFavicon(item.siteUrl)} 
-                        alt="{item.siteName} favicon"
-                        class="w-10 h-10 rounded-lg border border-gray-200"
-                        on:error={(e) => {
-                          const target = e.target as HTMLImageElement | null;
-                          if (target) {
-                            target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e5e7eb'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E";
-                          }
-                        }}
-                      />
-                    </div>
-                    
-                    <!-- Item Details -->
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center space-x-2">
-                        <h3 class="text-sm font-medium text-gray-900 truncate">{item.siteName}</h3>
-                        <span class="text-xs text-gray-500">•</span>
-                        <span class="text-xs text-gray-500 truncate">{item.siteUrl}</span>
-                      </div>
-                      <div class="mt-1 flex items-center space-x-4">
-                        <div class="flex items-center space-x-2">
-                          <span class="text-xs text-gray-500">Username:</span>
-                          <span class="text-sm text-gray-900">{item.username}</span>
-                          <button
-                            on:click={() => copyToClipboard(item.username, 'Username')}
-                            class="text-gray-400 hover:text-gray-600 transition-colors"
-                            title="Copy username"
-                            aria-label="Copy username"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                            </svg>
-                          </button>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                          <span class="text-xs text-gray-500">Password:</span>
-                          <span class="text-sm text-gray-900 font-mono">{maskPassword(item.password)}</span>
-                          <button
-                            on:click={() => copyToClipboard(item.password, 'Password')}
-                            class="text-gray-400 hover:text-gray-600 transition-colors"
-                            title="Copy password"
-                            aria-label="Copy password"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      {#if item.notes}
-                        <p class="mt-1 text-xs text-gray-500 truncate">{item.notes}</p>
-                      {/if}
-                    </div>
-                  </div>
-                  
-                  <!-- Actions -->
-                  <div class="flex items-center space-x-2 ml-4">
-                    <a
-                      href="/vault/{item.id}/edit"
-                      class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Edit entry"
-                      aria-label="Edit entry"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                      </svg>
-                    </a>
-                    <button
-                      on:click={() => confirmDelete(item)}
-                      class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete entry"
-                      aria-label="Delete entry"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <VaultItemRow
+                {item}
+                on:copy={(e) => copyToClipboard(e.detail.value, e.detail.type)}
+                on:delete={() => confirmDelete(item)}
+              />
             {/each}
           </div>
         </div>
