@@ -6,6 +6,7 @@ interface Toast {
   message: string;
   type?: ToastType;
   duration?: number; // ms
+  description?: string;
 }
 
 const defaultDuration = 2500;
