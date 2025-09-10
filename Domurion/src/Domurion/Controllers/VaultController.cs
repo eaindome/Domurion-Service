@@ -111,5 +111,37 @@ namespace Domurion.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        [HttpGet("export")]
+        public IActionResult Export(Guid userId)
+        {
+            var credentials = _passwordVaultService.GetCredentials(userId)
+                .Select(c => new {
+                    c.Site,
+                    c.Username,
+                    Password = _passwordVaultService.RetrievePassword(c.Id, userId),
+                });
+            return Ok(credentials);
+        }
+
+
+        [HttpPost("import")]
+        public IActionResult Import(Guid userId, [FromBody] List<ImportCredentialDto> credentials)
+        {
+            var imported = new List<object>();
+            foreach (var cred in credentials)
+            {
+                try
+                {
+                    var c = _passwordVaultService.AddCredential(userId, cred.Site, cred.Username, cred.Password);
+                    imported.Add(new { c.Id, c.Site, c.Username });
+                }
+                catch (Exception ex)
+                {
+                    imported.Add(new { cred.Site, cred.Username, error = ex.Message });
+                }
+            }
+            return Ok(imported);
+        }
     }
 }
