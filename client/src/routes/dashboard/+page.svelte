@@ -1,6 +1,7 @@
 <script lang=ts>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { toast } from '$lib/stores/toast';
   
   // Mock data - replace with actual API calls
   let vaultItems = [
@@ -79,6 +80,7 @@
   function copyToClipboard(text: string, type: string) {
     navigator.clipboard.writeText(text).then(() => {
       // You can show a toast notification here
+      toast.show('Copied to clipboard', 'success');
       console.log(`${type} copied to clipboard`);
     });
   }
