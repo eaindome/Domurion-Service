@@ -17,7 +17,7 @@ namespace Domurion.Services
             if (!Helper.IsStrongPassword(password))
                 throw new ArgumentException("Password does not meet strength requirements.");
 
-            var encryptedPassword = EncryptPassword(password);
+            var encryptedPassword = CryptoHelper.EncryptPassword(password);
             var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
             if (string.IsNullOrWhiteSpace(hmacKey))
                 throw new InvalidOperationException("HMAC_KEY environment variable is not set.");
@@ -34,7 +34,7 @@ namespace Domurion.Services
             _context.SaveChanges();
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credential.Id, "AddCredential", ipAddress, site);
+            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credential.Id, "AddCredential", ipAddress, site);
             return credential;
         }
 
@@ -61,8 +61,8 @@ namespace Domurion.Services
                 throw new InvalidOperationException("Data integrity check failed.");
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
-            return DecryptPassword(credential.EncryptedPassword);
+            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
+            return CryptoHelper.DecryptPassword(credential.EncryptedPassword);
         }
         
         public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? ipAddress = null)
@@ -78,7 +78,7 @@ namespace Domurion.Services
             {
                 if (!Helper.IsStrongPassword(password))
                     throw new ArgumentException("Password does not meet strength requirements.");
-                var encryptedPassword = EncryptPassword(password);
+                var encryptedPassword = CryptoHelper.EncryptPassword(password);
                 credential.EncryptedPassword = encryptedPassword;
                 var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");
                 if (string.IsNullOrWhiteSpace(hmacKey))
@@ -89,7 +89,7 @@ namespace Domurion.Services
             _context.SaveChanges();
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "UpdateCredential", ipAddress, credential.Site);
+            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "UpdateCredential", ipAddress, credential.Site);
             return credential;
         }
 
@@ -101,54 +101,9 @@ namespace Domurion.Services
             _context.SaveChanges();
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            Domurion.Helpers.AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "DeleteCredential", ipAddress, credential.Site);
+            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "DeleteCredential", ipAddress, credential.Site);
         }
 
-        private static string EncryptPassword(string password)
-        {
-            // AES encryption for production use. Store key/IV securely!
-            using var aes = Aes.Create();
-            aes.Key = GetAesKey();
-            aes.IV = GetAesIV();
-            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-            var plainBytes = Encoding.UTF8.GetBytes(password);
-            var encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
-            return Convert.ToBase64String(encryptedBytes);
-        }
-
-        private static string DecryptPassword(string encryptedPassword)
-        {
-            // AES decryption
-            using var aes = Aes.Create();
-            aes.Key = GetAesKey();
-            aes.IV = GetAesIV();
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            var encryptedBytes = Convert.FromBase64String(encryptedPassword);
-            var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
-            return Encoding.UTF8.GetString(decryptedBytes);
-        }
-
-        private static byte[] GetAesKey()
-        {
-            var keyBase64 = Environment.GetEnvironmentVariable("AES_KEY");
-            if (string.IsNullOrWhiteSpace(keyBase64))
-                throw new InvalidOperationException("AES_KEY environment variable is not set.");
-            var key = Convert.FromBase64String(keyBase64);
-            if (key.Length != 32)
-                throw new InvalidOperationException("AES_KEY must be 32 bytes (Base64-encoded).");
-            return key;
-        }
-
-        private static byte[] GetAesIV()
-        {
-            var ivBase64 = Environment.GetEnvironmentVariable("AES_IV");
-            if (string.IsNullOrWhiteSpace(ivBase64))
-                throw new InvalidOperationException("AES_IV environment variable is not set.");
-            var iv = Convert.FromBase64String(ivBase64);
-            if (iv.Length != 16)
-                throw new InvalidOperationException("AES_IV must be 16 bytes (Base64-encoded).");
-            return iv;
-        }
         // Share a credential with another user by username
         public Credential ShareCredential(Guid credentialId, Guid fromUserId, string toUsername, string? ipAddress = null)
         {
