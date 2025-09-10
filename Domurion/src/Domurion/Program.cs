@@ -34,15 +34,6 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// Configure FIDO2
-builder.Services.AddSingleton<Fido2>(sp =>
-    new Fido2(new Fido2Configuration
-    {
-        ServerDomain = "localhost", // or domain
-        ServerName = "Domurion",
-        Origins = new HashSet<string> { "https://localhost:5001" } // or origins
-    }));
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
