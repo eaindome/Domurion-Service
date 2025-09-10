@@ -2,17 +2,21 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { toast } from '$lib/stores/toast'
+	import { deleteVaultEntry, updateVaultEntry, getVaultEntry } from '$lib/api/vault';
+	import { generatePassword, copyToClipboard } from '../../../../utils/helpers';
+	import { validateVaultEntry } from '$lib/validation/validations';
 
 	// Get entry ID from URL params
-	$: entryId = $page.params.id;
+	$: entryId = $page.params.id ?? '';
 
 	// Form data
-	let formData = {
-		siteName: '',
-		url: '',
-		username: '',
-		password: '',
-		notes: ''
+	let formData: {
+		siteName: string;
+		url?: string;
+		username: string;
+		password: string;
+		notes?: string;
 	};
 
 	let originalData = {};
@@ -26,17 +30,12 @@
 	// Load existing entry data
 	onMount(async () => {
 		try {
-			const response = await fetch(`/api/vault/${entryId}`);
-			
-			if (response.ok) {
-				const entry = await response.json();
+			const entry = await getVaultEntry(entryId);
+			if (entry) {
 				formData = { ...entry };
 				originalData = { ...entry };
-			} else if (response.status === 404) {
-				// Entry not found, redirect to dashboard
-				goto('/dashboard');
 			} else {
-				console.error('Failed to load entry');
+				// Entry not found or error
 				goto('/dashboard');
 			}
 		} catch (error) {
@@ -50,58 +49,22 @@
 	// Check if form has changes
 	$: hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
 
-	// Generate password functionality
-	function generatePassword() {
-		const length = 16;
-		const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-		let password = '';
-		for (let i = 0; i < length; i++) {
-			password += charset.charAt(Math.floor(Math.random() * charset.length));
-		}
-		formData.password = password;
-	}
-
-	// Form validation
-	function validateForm() {
-		errors = {};
-		
-		if (!formData.siteName.trim()) {
-			errors.siteName = 'Site name is required';
-		}
-		
-		if (!formData.username.trim()) {
-			errors.username = 'Username is required';
-		}
-		
-		if (!formData.password.trim()) {
-			errors.password = 'Password is required';
-		}
-
-		return Object.keys(errors).length === 0;
-	}
-
 	// Handle form submission
 	async function handleSubmit() {
-		if (!validateForm()) return;
-		
+		errors = validateVaultEntry(formData);
+		if (Object.keys(errors).length > 0) return;		
 		isSubmitting = true;
 		
 		try {
-			const response = await fetch(`/api/vault/${entryId}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(formData)
-			});
-
-			if (response.ok) {
+			const result = await updateVaultEntry(entryId, formData);
+			if (result.success) {
 				// Success - redirect to dashboard
+				toast.show('Entry updated successfully', 'success');
 				goto('/dashboard');
 			} else {
 				// Handle error
-				const error = await response.json();
-				console.error('Failed to update entry:', error);
+				toast.show('Failed to update entry', 'error');
+				console.error('Failed to update entry:', result.error);
 			}
 		} catch (error) {
 			console.error('Error updating entry:', error);
@@ -115,17 +78,17 @@
 		isDeleting = true;
 		
 		try {
-			const response = await fetch(`/api/vault/${entryId}`, {
-				method: 'DELETE'
-			});
-
-			if (response.ok) {
+			const result = await deleteVaultEntry(entryId);
+			if (result.success) {
 				// Success - redirect to dashboard
+				toast.show('Entry deleted successfully', 'success')
 				goto('/dashboard');
 			} else {
-				console.error('Failed to delete entry');
+				toast.show('Error deleting entry', 'error');
+				console.error('Failed to delete entry:', result.error);
 			}
 		} catch (error) {
+			toast.show('An error occurred while deleting the entry', 'error');
 			console.error('Error deleting entry:', error);
 		} finally {
 			isDeleting = false;
@@ -144,13 +107,16 @@
 		}
 	}
 
-	// Copy password to clipboard
-	async function copyPassword() {
-		try {
-			await navigator.clipboard.writeText(formData.password);
-			// You could add a toast notification here
-		} catch (err) {
-			console.error('Failed to copy password:', err);
+	// Handle password generation
+	function handleGeneratePassword() {
+		formData.password = generatePassword();
+	}
+
+	// Handle copy password to clipboard
+	function handleCopyPassword() {
+		if (formData.password) {
+			copyToClipboard(formData.password);
+			toast.show('Password copied!', 'success');
 		}
 	}
 </script>
@@ -295,7 +261,7 @@
 								{#if formData.password}
 									<button
 										type="button"
-										on:click={copyPassword}
+										on:click={handleCopyPassword}
 										class="p-1 text-gray-400 hover:text-gray-600 transition-colors"
 										title="Copy password"
 										aria-label="Copy password"
@@ -314,7 +280,7 @@
 						
 						<button
 							type="button"
-							on:click={generatePassword}
+							on:click={handleGeneratePassword}
 							class="mt-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
 						>
 							Generate new password

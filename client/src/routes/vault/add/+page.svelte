@@ -1,6 +1,10 @@
 <script lang=ts>
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { createVaultEntry } from '$lib/api/vault';
+	import type { VaultEntryErrors } from '$lib/types';
+	import { validateVaultEntry } from '$lib/validation/validations';
+	import { generatePassword, copyToClipboard } from '../../../utils/helpers';
+	import { toast } from '$lib/stores/toast';
 
 	// Form data
 	let formData = {
@@ -13,67 +17,24 @@
 
 	let showPassword = false;
 	let isSubmitting = false;
-	let errors: {
-		siteName?: string;
-		username?: string;
-		password?: string;
-	} = {};
-
-	// Generate password functionality
-	function generatePassword() {
-		const length = 16;
-		const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-		let password = '';
-		for (let i = 0; i < length; i++) {
-			password += charset.charAt(Math.floor(Math.random() * charset.length));
-		}
-		formData.password = password;
-	}
-
-	// Form validation
-	function validateForm() {
-		errors = {};
-		
-		if (!formData.siteName.trim()) {
-			errors.siteName = 'Site name is required';
-		}
-		
-		if (!formData.username.trim()) {
-			errors.username = 'Username is required';
-		}
-		
-		if (!formData.password.trim()) {
-			errors.password = 'Password is required';
-		}
-
-		return Object.keys(errors).length === 0;
-	}
+	let errors: VaultEntryErrors = {};
 
 	// Handle form submission
 	async function handleSubmit() {
-		if (!validateForm()) return;
-		
+		errors = validateVaultEntry(formData);
+		if (Object.keys(errors).length > 0) return;
 		isSubmitting = true;
-		
 		try {
-			// API call to save vault entry
-			const response = await fetch('/api/vault', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(formData)
-			});
-
-			if (response.ok) {
-				// Success - redirect to dashboard
+			const success = await createVaultEntry(formData);
+			if (success) {
+				toast.show('Entry saved successfully', 'success');
 				goto('/dashboard');
 			} else {
-				// Handle error
-				const error = await response.json();
-				console.error('Failed to save entry:', error);
+				toast.show('Failed to save entry', 'error');
+				console.error('Failed to save entry');
 			}
 		} catch (error) {
+			toast.show('An error occurred while saving the entry', 'error');
 			console.error('Error saving entry:', error);
 		} finally {
 			isSubmitting = false;
@@ -85,13 +46,16 @@
 		goto('/dashboard');
 	}
 
-	// Copy password to clipboard
-	async function copyPassword() {
-		try {
-			await navigator.clipboard.writeText(formData.password);
-			// You could add a toast notification here
-		} catch (err) {
-			console.error('Failed to copy password:', err);
+	// Handle password generation
+	function handleGeneratePassword() {
+		formData.password = generatePassword();
+	}
+
+	// Handle copy password to clipboard
+	function handleCopyPassword() {
+		if (formData.password) {
+			copyToClipboard(formData.password);
+			toast.show('Password copied!', 'success');
 		}
 	}
 </script>
@@ -219,10 +183,10 @@
 							{#if formData.password}
 								<button
 									type="button"
-									on:click={copyPassword}
+									on:click={handleCopyPassword}
 									class="p-1 text-gray-400 hover:text-gray-600 transition-colors"
 									title="Copy password"
-                                    aria-label="Copy Password"
+									aria-label="Copy password"
 								>
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -238,7 +202,7 @@
 					
 					<button
 						type="button"
-						on:click={generatePassword}
+						on:click={handleGeneratePassword}
 						class="mt-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
 					>
 						Generate secure password
