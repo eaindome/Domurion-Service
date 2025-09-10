@@ -3,14 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Domurion.Tests
 {
-        public class PasswordVaultServiceTests
+    public class PasswordVaultServiceTests
+    {
+        private static void SetTestEnvironmentVariables()
         {
-            private static void SetTestEnvironmentVariables()
-            {
-                Environment.SetEnvironmentVariable("AES_KEY", Convert.ToBase64String(new byte[32]));
-                Environment.SetEnvironmentVariable("AES_IV", Convert.ToBase64String(new byte[16]));
-                Environment.SetEnvironmentVariable("HMAC_KEY", Convert.ToBase64String(new byte[32]));
-            }
+            Environment.SetEnvironmentVariable("AES_KEY", Convert.ToBase64String(new byte[32]));
+            Environment.SetEnvironmentVariable("AES_IV", Convert.ToBase64String(new byte[16]));
+            Environment.SetEnvironmentVariable("HMAC_KEY", Convert.ToBase64String(new byte[32]));
+        }
         static PasswordVaultServiceTests()
         {
             DotNetEnv.Env.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
@@ -208,6 +208,44 @@ namespace Domurion.Tests
             var log = context.AuditLogs.FirstOrDefault(l => l.UserId == userId && l.CredentialId == cred.Id && l.Action == "UpdateCredential");
             Assert.NotNull(log);
             Assert.Equal("newsite.com", log.Site);
+        }
+        #endregion
+        
+        #region DeleteCredential
+        [Fact]
+        public void DeleteCredential_RemovesCredential()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            vaultService.DeleteCredential(cred.Id, userId);
+            Assert.Empty(context.Credentials.Where(c => c.Id == cred.Id));
+        }
+
+        [Fact]
+        public void DeleteCredential_NotFound_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            Assert.Throws<KeyNotFoundException>(() => vaultService.DeleteCredential(Guid.NewGuid(), userId));
+        }
+
+        [Fact]
+        public void DeleteCredential_AuditLog_IsWritten()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            vaultService.DeleteCredential(cred.Id, userId);
+            var log = context.AuditLogs.FirstOrDefault(l => l.UserId == userId && l.CredentialId == cred.Id && l.Action == "DeleteCredential");
+            Assert.NotNull(log);
+            Assert.Equal("site.com", log.Site);
         }
         #endregion
     }
