@@ -166,6 +166,155 @@ namespace Domurion.Tests
             Assert.NotNull(notFound.Value);
             Assert.Contains("not found", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
         }
-        #endregion        
+        #endregion       
+
+        #region Export
+        [Fact]
+        public void Export_ReturnsAllCredentialsWithPasswords()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var userId = Guid.NewGuid();
+            var vaultService = new PasswordVaultService(context);
+            vaultService.AddCredential(userId, "site1.com", "user1", "StrongP@ssw0rd!");
+            vaultService.AddCredential(userId, "site2.com", "user2", "NewStr0ngP@ss1!");
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = controller.Export(userId);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var creds = (ok.Value as IEnumerable<object>)?.ToList();
+            Assert.NotNull(creds);
+            Assert.Equal(2, creds.Count);
+            var passwords = creds.Select(c => c.GetType().GetProperty("Password")?.GetValue(c, null) as string).ToList();
+            Assert.Contains("StrongP@ssw0rd!", passwords);
+            Assert.Contains("NewStr0ngP@ss1!", passwords);
+        }
+        #endregion
+
+        #region Import
+        [Fact]
+        public void Import_Success_ReturnsImported()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var userId = Guid.NewGuid();
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var importList = new List<Domurion.Dtos.ImportCredentialDto> {
+                new() { Site = "site1.com", Username = "user1", Password = "StrongP@ssw0rd!" },
+                new() { Site = "site2.com", Username = "user2", Password = "NewStr0ngP@ss1!" }
+            };
+            var result = controller.Import(userId, importList);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var imported = (ok.Value as IEnumerable<object>)?.ToList();
+            Assert.NotNull(imported);
+            Assert.Equal(2, imported.Count);
+            Assert.All(imported, i => Assert.NotNull(i.GetType().GetProperty("Id")?.GetValue(i, null)));
+        }
+
+        [Fact]
+        public void Import_PartialFailure_ReturnsErrors()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var userId = Guid.NewGuid();
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var importList = new List<Domurion.Dtos.ImportCredentialDto> {
+                new() { Site = "site1.com", Username = "user1", Password = "StrongP@ssw0rd!" },
+                new() { Site = "", Username = "", Password = "" }
+            };
+            var result = controller.Import(userId, importList);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var imported = (ok.Value as IEnumerable<object>)?.ToList();
+            Assert.NotNull(imported);
+            Assert.Equal(2, imported.Count);
+            Assert.NotNull(imported[0].GetType().GetProperty("Id")?.GetValue(imported[0], null));
+            var error = imported[1].GetType().GetProperty("error")?.GetValue(imported[1], null) as string;
+            Assert.False(string.IsNullOrWhiteSpace(error));
+        }
+        #endregion
+
+        #region Share
+        [Fact]
+        public void Share_Success_ReturnsOk()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            // Add two users
+            var user1 = context.Users.Add(new Domurion.Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            var user2 = context.Users.Add(new Domurion.Models.User { Username = "bob", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user1.Id, "site.com", "user", "StrongP@ssw0rd!");
+            var result = controller.Share(cred.Id, user1.Id, "bob");
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var sharedSite = ok.Value.GetType().GetProperty("Site")?.GetValue(ok.Value, null) as string;
+            Assert.Equal("site.com", sharedSite);
+        }
+
+        [Fact]
+        public void Share_SelfShare_ReturnsBadRequest()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var user = context.Users.Add(new Domurion.Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user.Id, "site.com", "user", "StrongP@ssw0rd!");
+            var result = controller.Share(cred.Id, user.Id, "alice");
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.NotNull(badRequest.Value);
+            Assert.Contains("yourself", badRequest.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Share_RecipientNotFound_ReturnsNotFound()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var user = context.Users.Add(new Domurion.Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user.Id, "site.com", "user", "StrongP@ssw0rd!");
+            var result = controller.Share(cred.Id, user.Id, "bob");
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.NotNull(notFound.Value);
+            Assert.Contains("recipient", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Share_CredentialNotFound_ReturnsNotFound()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var user1 = context.Users.Add(new Domurion.Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            var user2 = context.Users.Add(new Domurion.Models.User { Username = "bob", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var result = controller.Share(Guid.NewGuid(), user1.Id, "bob");
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.NotNull(notFound.Value);
+            Assert.Contains("not found", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+        #endregion 
     }
 }
