@@ -39,7 +39,10 @@ namespace Domurion.Controllers
                 var user = _userService.Login(userDto.Username, userDto.Password);
                 if (user == null)
                     return Unauthorized(new { error = "Invalid username or password." });
-                return Ok(new { user.Id, user.Username });
+
+                // Generate JWT token
+                var token = Helpers.JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!);
+                return Ok(new { user.Id, user.Username, token });
             }
             catch (ArgumentException ex)
             {
