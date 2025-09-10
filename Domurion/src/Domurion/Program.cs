@@ -2,7 +2,7 @@ using Domurion.Services;
 using Domurion.Data;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using Fido2NetLib;
+using Domurion.Services.Interfaces;
 using System.Threading.RateLimiting;
 
 Env.Load();
