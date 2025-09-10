@@ -149,5 +149,36 @@ namespace Domurion.Services
                 throw new InvalidOperationException("AES_IV must be 16 bytes (Base64-encoded).");
             return iv;
         }
+        // Share a credential with another user by username
+        public Credential ShareCredential(Guid credentialId, Guid fromUserId, string toUsername, string? ipAddress = null)
+        {
+            var fromUser = _context.Users.FirstOrDefault(u => u.Id == fromUserId)
+                ?? throw new KeyNotFoundException("Sender user not found.");
+            var toUser = _context.Users.FirstOrDefault(u => u.Username == toUsername)
+                ?? throw new KeyNotFoundException("Recipient user not found.");
+            if (fromUser.Id == toUser.Id)
+                throw new ArgumentException("Cannot share credential with yourself.");
+
+            var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == fromUserId)
+                ?? throw new KeyNotFoundException("Credential not found.");
+
+            // Duplicate the credential for the recipient
+            var newCredential = new Credential
+            {
+                UserId = toUser.Id,
+                Site = credential.Site,
+                Username = credential.Username,
+                EncryptedPassword = credential.EncryptedPassword,
+                IntegrityHash = credential.IntegrityHash
+            };
+            _context.Credentials.Add(newCredential);
+            _context.SaveChanges();
+
+            // Audit log for both users
+            AuditLogger.Log(_context, fromUser.Id, fromUser.Username, credential.Id, "ShareCredential", ipAddress, credential.Site);
+            AuditLogger.Log(_context, toUser.Id, toUser.Username, newCredential.Id, "ReceiveSharedCredential", ipAddress, credential.Site);
+
+            return newCredential;
+        }
     }
 }

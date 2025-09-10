@@ -88,5 +88,28 @@ namespace Domurion.Controllers
                 return NotFound(new { error = ex.Message });
             }
         }
+
+        [HttpPost("share")]
+        public IActionResult Share(Guid credentialId, Guid fromUserId, string toUsername)
+        {
+            try
+            {
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var sharedCredential = _passwordVaultService.ShareCredential(credentialId, fromUserId, toUsername, ip);
+                return Ok(new { sharedCredential.Id, sharedCredential.Site, sharedCredential.Username });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }
