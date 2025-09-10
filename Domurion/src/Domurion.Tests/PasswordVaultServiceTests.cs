@@ -3,8 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Domurion.Tests
 {
-    public class PasswordVaultServiceTests
-    {
+        public class PasswordVaultServiceTests
+        {
+            private static void SetTestEnvironmentVariables()
+            {
+                Environment.SetEnvironmentVariable("AES_KEY", Convert.ToBase64String(new byte[32]));
+                Environment.SetEnvironmentVariable("AES_IV", Convert.ToBase64String(new byte[16]));
+                Environment.SetEnvironmentVariable("HMAC_KEY", Convert.ToBase64String(new byte[32]));
+            }
         static PasswordVaultServiceTests()
         {
             DotNetEnv.Env.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
@@ -22,18 +28,20 @@ namespace Domurion.Tests
         [Fact]
         public void AddCredential_ShouldStoreCredential()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
-            var credential = vaultService.AddCredential(TestUserId, "example.com", "john", "secret123");
+            var credential = vaultService.AddCredential(TestUserId, "example.com", "john", "StrongP@ssw0rd!");
             Assert.NotNull(credential);
             Assert.Equal("example.com", credential.Site);
             Assert.Equal("john", credential.Username);
-            Assert.NotEqual("secret123", credential.EncryptedPassword); // Ensure encrypted
+            Assert.NotEqual("StrongP@ssw0rd!", credential.EncryptedPassword); // Ensure encrypted
         }
 
         [Fact]
         public void AddCredential_WeakPassword_ShouldThrow()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             Assert.Throws<ArgumentException>(() => vaultService.AddCredential(TestUserId, "site.com", "user", "weak"));
@@ -42,6 +50,7 @@ namespace Domurion.Tests
         [Fact]
         public void AddCredential_DuplicateSiteUsername_Allows()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var cred1 = vaultService.AddCredential(TestUserId, "site.com", "user", "StrongP@ssw0rd!");
@@ -51,6 +60,7 @@ namespace Domurion.Tests
         [Fact]
         public void AddCredential_AuditLog_IsWritten()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var userId = TestUserId;
@@ -63,6 +73,7 @@ namespace Domurion.Tests
         [Fact]
         public void AddCredential_WithInvalidData_ShouldThrow()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             Assert.Throws<ArgumentException>(() => vaultService.AddCredential(TestUserId, "", "user", "pass"));
@@ -79,8 +90,9 @@ namespace Domurion.Tests
             var vaultService = new PasswordVaultService(context);
             var userId1 = TestUserId;
             var userId2 = TestUserId;
-            vaultService.AddCredential(userId1, "site1.com", "user1", "pass1");
-            vaultService.AddCredential(userId2, "site2.com", "user2", "pass2");
+            SetTestEnvironmentVariables();
+            vaultService.AddCredential(userId1, "site1.com", "user1", "StrongP@ssw0rd!");
+            vaultService.AddCredential(userId2, "site2.com", "user2", "NewStr0ngP@ss1!");
             var results = vaultService.GetCredentials(userId1);
             Assert.Single(results); // Only user1’s creds
             Assert.Equal("site1.com", results.First().Site);
@@ -91,6 +103,7 @@ namespace Domurion.Tests
         [Fact]
         public void RetrievePassword_AuditLog_IsWritten()
         {
+            SetTestEnvironmentVariables();
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var userId = TestUserId;
@@ -106,9 +119,10 @@ namespace Domurion.Tests
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var userId = TestUserId;
-            var credential = vaultService.AddCredential(userId, "mysite.com", "john", "mypassword");
+            SetTestEnvironmentVariables();
+            var credential = vaultService.AddCredential(userId, "mysite.com", "john", "StrongP@ssw0rd!");
             var password = vaultService.RetrievePassword(credential.Id, userId);
-            Assert.Equal("mypassword", password);
+            Assert.Equal("StrongP@ssw0rd!", password);
         }
 
         [Fact]
@@ -117,7 +131,8 @@ namespace Domurion.Tests
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var userId = TestUserId;
-            var credential = vaultService.AddCredential(userId, "mysite.com", "john", "mypassword");
+            SetTestEnvironmentVariables();
+            var credential = vaultService.AddCredential(userId, "mysite.com", "john", "StrongP@ssw0rd!");
             Assert.Throws<KeyNotFoundException>(() => vaultService.RetrievePassword(credential.Id, TestUserId));
         }
 
@@ -127,8 +142,72 @@ namespace Domurion.Tests
             var context = CreateInMemoryContext();
             var vaultService = new PasswordVaultService(context);
             var userId = TestUserId;
-            vaultService.AddCredential(userId, "mysite.com", "john", "mypassword");
+            SetTestEnvironmentVariables();
+            vaultService.AddCredential(userId, "mysite.com", "john", "StrongP@ssw0rd!");
             Assert.Throws<KeyNotFoundException>(() => vaultService.RetrievePassword(Guid.NewGuid(), userId));
+        }
+        #endregion
+
+        #region UpdateCredential
+        [Fact]
+        public void UpdateCredential_ChangeSiteAndUsername_Success()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "oldsite.com", "olduser", "StrongP@ssw0rd!");
+            var updated = vaultService.UpdateCredential(cred.Id, userId, "newsite.com", "newuser", null);
+            Assert.Equal("newsite.com", updated.Site);
+            Assert.Equal("newuser", updated.Username);
+        }
+
+        [Fact]
+        public void UpdateCredential_ChangePassword_Success()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            var originalEncrypted = cred.EncryptedPassword;
+            var updated = vaultService.UpdateCredential(cred.Id, userId, null, null, "NewStr0ngP@ss!");
+            Assert.NotEqual(originalEncrypted, updated.EncryptedPassword);
+        }
+
+        [Fact]
+        public void UpdateCredential_WeakPassword_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            Assert.Throws<ArgumentException>(() => vaultService.UpdateCredential(cred.Id, userId, null, null, "weak"));
+        }
+
+        [Fact]
+        public void UpdateCredential_NotFound_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            Assert.Throws<KeyNotFoundException>(() => vaultService.UpdateCredential(Guid.NewGuid(), userId, "site", "user", "StrongP@ssw0rd!"));
+        }
+
+        [Fact]
+        public void UpdateCredential_AuditLog_IsWritten()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            var updated = vaultService.UpdateCredential(cred.Id, userId, "newsite.com", null, null);
+            var log = context.AuditLogs.FirstOrDefault(l => l.UserId == userId && l.CredentialId == cred.Id && l.Action == "UpdateCredential");
+            Assert.NotNull(log);
+            Assert.Equal("newsite.com", log.Site);
         }
         #endregion
     }
