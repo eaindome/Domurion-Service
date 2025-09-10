@@ -237,5 +237,21 @@ namespace Domurion.Tests
             Assert.Contains("not found", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
         }
         #endregion
+
+        #region GeneratePassword
+        [Fact]
+        public void GeneratePassword_ReturnsPasswordOfRequestedLength()
+        {
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var result = controller.GeneratePassword(20);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var password = ok.Value.GetType().GetProperty("password")?.GetValue(ok.Value, null) as string;
+            Assert.NotNull(password);
+            Assert.Equal(20, password.Length);
+            Assert.DoesNotContain(' ', password);
+        }
+        #endregion
     }
 }
