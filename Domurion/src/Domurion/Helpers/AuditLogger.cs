@@ -4,7 +4,7 @@ namespace Domurion.Helpers
 {
     public static class AuditLogger
     {
-        public static void Log(Domurion.Data.DataContext context, Guid userId, string username, Guid? credentialId, string action, string? ipAddress, string? site = null)
+        public static void Log(Data.DataContext context, Guid userId, string username, Guid? credentialId, string action, string? ipAddress, string? site = null)
         {
             var log = new AuditLog
             {
