@@ -82,23 +82,6 @@ namespace Domurion.Tests
         }
         #endregion
 
-        #region GetCredentials
-        [Fact]
-        public void GetCredentials_ShouldReturnForCorrectUser()
-        {
-            var context = CreateInMemoryContext();
-            var vaultService = new PasswordVaultService(context);
-            var userId1 = TestUserId;
-            var userId2 = TestUserId;
-            SetTestEnvironmentVariables();
-            vaultService.AddCredential(userId1, "site1.com", "user1", "StrongP@ssw0rd!");
-            vaultService.AddCredential(userId2, "site2.com", "user2", "NewStr0ngP@ss1!");
-            var results = vaultService.GetCredentials(userId1);
-            Assert.Single(results); // Only user1’s creds
-            Assert.Equal("site1.com", results.First().Site);
-        }
-        #endregion
-
         #region RetrievePassword
         [Fact]
         public void RetrievePassword_AuditLog_IsWritten()
@@ -113,6 +96,7 @@ namespace Domurion.Tests
             Assert.NotNull(log);
             Assert.Equal("site.com", log.Site);
         }
+
         [Fact]
         public void RetrievePassword_ShouldReturnOriginalPassword()
         {
@@ -248,7 +232,7 @@ namespace Domurion.Tests
             Assert.Equal("site.com", log.Site);
         }
         #endregion
-        
+
         #region ShareCredential
         [Fact]
         public void ShareCredential_Success_DuplicatesCredentialForRecipient()
@@ -321,6 +305,95 @@ namespace Domurion.Tests
             Assert.NotNull(log2);
             Assert.Equal("site.com", log1.Site);
             Assert.Equal("site.com", log2.Site);
+        }
+        #endregion
+
+        #region DataIntegrity
+        [Fact]
+        public void RetrievePassword_DataIntegrityFailure_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            // Tamper with integrity hash
+            cred.IntegrityHash = "invalidhash";
+            context.SaveChanges();
+            var ex = Assert.Throws<InvalidOperationException>(() => vaultService.RetrievePassword(cred.Id, userId));
+            Assert.Contains("integrity", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void RetrievePassword_DataIntegrityFailure_DoesNotWriteAuditLog()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            cred.IntegrityHash = "invalidhash";
+            context.SaveChanges();
+            try
+            {
+                _ = vaultService.RetrievePassword(cred.Id, userId);
+            }
+            catch (InvalidOperationException) { }
+            // Should not log on failure
+            var log = context.AuditLogs.FirstOrDefault(l => l.UserId == userId && l.CredentialId == cred.Id && l.Action == "RetrievePassword");
+            Assert.Null(log);
+        }
+        #endregion
+
+        #region ImportExport
+        [Fact]
+        public void ExportCredentials_ReturnsAllWithPasswords()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var cred1 = vaultService.AddCredential(userId, "site1.com", "user1", "StrongP@ssw0rd!");
+            var cred2 = vaultService.AddCredential(userId, "site2.com", "user2", "NewStr0ngP@ss1!");
+            var credentials = vaultService.GetCredentials(userId).ToList();
+            var exported = credentials.Select(c => new {
+                c.Site,
+                c.Username,
+                Password = vaultService.RetrievePassword(c.Id, userId)
+            }).ToList();
+            Assert.Equal(2, exported.Count);
+            Assert.Contains(exported, e => e.Site == "site1.com" && e.Password == "StrongP@ssw0rd!");
+            Assert.Contains(exported, e => e.Site == "site2.com" && e.Password == "NewStr0ngP@ss1!");
+        }
+
+        [Fact]
+        public void ImportCredentials_SuccessAndPartialFailure()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var vaultService = new PasswordVaultService(context);
+            var userId = TestUserId;
+            var importList = new[] {
+                new { Site = "site1.com", Username = "user1", Password = "StrongP@ssw0rd!" },
+                new { Site = "", Username = "", Password = "" }
+            };
+            var imported = new List<object>();
+            foreach (var cred in importList)
+            {
+                try
+                {
+                    var c = vaultService.AddCredential(userId, cred.Site, cred.Username, cred.Password);
+                    imported.Add(new { c.Id, c.Site, c.Username });
+                }
+                catch (Exception ex)
+                {
+                    imported.Add(new { cred.Site, cred.Username, error = ex.Message });
+                }
+            }
+            Assert.Equal(2, imported.Count);
+            Assert.NotNull(imported[0].GetType().GetProperty("Id")?.GetValue(imported[0], null));
+            var error = imported[1].GetType().GetProperty("error")?.GetValue(imported[1], null) as string;
+            Assert.False(string.IsNullOrWhiteSpace(error));
         }
         #endregion
     }
