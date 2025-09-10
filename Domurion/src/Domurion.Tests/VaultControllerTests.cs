@@ -112,6 +112,60 @@ namespace Domurion.Tests
         #endregion
 
         #region Retrieve
+        [Fact]
+        public void Retrieve_Success_ReturnsPassword()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var userId = Guid.NewGuid();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            var result = controller.Retrieve(cred.Id, userId);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var password = ok.Value.GetType().GetProperty("Password")?.GetValue(ok.Value, null) as string;
+            Assert.Equal("StrongP@ssw0rd!", password);
+        }
+
+        [Fact]
+        public void Retrieve_WrongUser_ReturnsNotFound()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var userId = Guid.NewGuid();
+            var otherUserId = Guid.NewGuid();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(userId, "site.com", "user", "StrongP@ssw0rd!");
+            var result = controller.Retrieve(cred.Id, otherUserId);
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.NotNull(notFound.Value);
+            Assert.Contains("not found", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void Retrieve_NotFound_ReturnsNotFound()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var userId = Guid.NewGuid();
+            var missingCredId = Guid.NewGuid();
+            var result = controller.Retrieve(missingCredId, userId);
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.NotNull(notFound.Value);
+            Assert.Contains("not found", notFound.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
         #endregion        
     }
 }
