@@ -12,7 +12,7 @@ namespace Domurion.Helpers
                 return false;
 
             // At least one uppercase, one lowercase, one digit, one special character
-            var pattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d]).{8,}$";
+            var pattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$";
             return Regex.IsMatch(password, pattern);
         }
 
