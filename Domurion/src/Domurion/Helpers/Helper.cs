@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 
 namespace Domurion.Helpers
 {
