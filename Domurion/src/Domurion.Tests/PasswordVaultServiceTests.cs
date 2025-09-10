@@ -210,7 +210,7 @@ namespace Domurion.Tests
             Assert.Equal("newsite.com", log.Site);
         }
         #endregion
-        
+
         #region DeleteCredential
         [Fact]
         public void DeleteCredential_RemovesCredential()
@@ -246,6 +246,81 @@ namespace Domurion.Tests
             var log = context.AuditLogs.FirstOrDefault(l => l.UserId == userId && l.CredentialId == cred.Id && l.Action == "DeleteCredential");
             Assert.NotNull(log);
             Assert.Equal("site.com", log.Site);
+        }
+        #endregion
+        
+        #region ShareCredential
+        [Fact]
+        public void ShareCredential_Success_DuplicatesCredentialForRecipient()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            // Add two users
+            var user1 = context.Users.Add(new Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            var user2 = context.Users.Add(new Models.User { Username = "bob", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user1.Id, "site.com", "user", "StrongP@ssw0rd!");
+            var shared = vaultService.ShareCredential(cred.Id, user1.Id, "bob");
+            Assert.NotEqual(cred.Id, shared.Id);
+            Assert.Equal(user2.Id, shared.UserId);
+            Assert.Equal(cred.Site, shared.Site);
+            Assert.Equal(cred.Username, shared.Username);
+        }
+
+        [Fact]
+        public void ShareCredential_SelfShare_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var user = context.Users.Add(new Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user.Id, "site.com", "user", "StrongP@ssw0rd!");
+            Assert.Throws<ArgumentException>(() => vaultService.ShareCredential(cred.Id, user.Id, "alice"));
+        }
+
+        [Fact]
+        public void ShareCredential_RecipientNotFound_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var user = context.Users.Add(new Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user.Id, "site.com", "user", "StrongP@ssw0rd!");
+            Assert.Throws<KeyNotFoundException>(() => vaultService.ShareCredential(cred.Id, user.Id, "bob"));
+        }
+
+        [Fact]
+        public void ShareCredential_CredentialNotFound_Throws()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var user1 = context.Users.Add(new Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            var user2 = context.Users.Add(new Models.User { Username = "bob", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            Assert.Throws<KeyNotFoundException>(() => vaultService.ShareCredential(Guid.NewGuid(), user1.Id, "bob"));
+        }
+
+        [Fact]
+        public void ShareCredential_AuditLogs_AreWritten()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var user1 = context.Users.Add(new Models.User { Username = "alice", PasswordHash = "hash" }).Entity;
+            var user2 = context.Users.Add(new Models.User { Username = "bob", PasswordHash = "hash" }).Entity;
+            context.SaveChanges();
+            var vaultService = new PasswordVaultService(context);
+            var cred = vaultService.AddCredential(user1.Id, "site.com", "user", "StrongP@ssw0rd!");
+            var shared = vaultService.ShareCredential(cred.Id, user1.Id, "bob");
+            var log1 = context.AuditLogs.FirstOrDefault(l => l.UserId == user1.Id && l.CredentialId == cred.Id && l.Action == "ShareCredential");
+            var log2 = context.AuditLogs.FirstOrDefault(l => l.UserId == user2.Id && l.CredentialId == shared.Id && l.Action == "ReceiveSharedCredential");
+            Assert.NotNull(log1);
+            Assert.NotNull(log2);
+            Assert.Equal("site.com", log1.Site);
+            Assert.Equal("site.com", log2.Site);
         }
         #endregion
     }
