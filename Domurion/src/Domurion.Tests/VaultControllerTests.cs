@@ -68,6 +68,50 @@ namespace Domurion.Tests
         }
         #endregion
 
-        
+        #region List
+        [Fact]
+        public void List_WithCredentials_ReturnsOnlyForUser()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var userId1 = Guid.NewGuid();
+            var userId2 = Guid.NewGuid();
+            // Add credentials for both users
+            var vaultService = new PasswordVaultService(context);
+            vaultService.AddCredential(userId1, "site1.com", "user1", "StrongP@ssw0rd!");
+            vaultService.AddCredential(userId2, "site2.com", "user2", "StrongP@ssw0rd!");
+            var result = controller.List(userId1);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var creds = ok.Value as IEnumerable<object>;
+            Assert.NotNull(creds);
+            Assert.Single(creds);
+            var site = creds.First().GetType().GetProperty("Site")?.GetValue(creds.First(), null) as string;
+            Assert.Equal("site1.com", site);
+        }
+
+        [Fact]
+        public void List_Empty_ReturnsEmptyList()
+        {
+            SetTestEnvironmentVariables();
+            var context = CreateInMemoryContext();
+            var controller = CreateController(context);
+            var httpContext = new DefaultHttpContext();
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var userId = Guid.NewGuid();
+            var result = controller.List(userId);
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(ok.Value);
+            var creds = ok.Value as IEnumerable<object>;
+            Assert.NotNull(creds);
+            Assert.Empty(creds);
+        }
+        #endregion
+
+        #region Retrieve
+        #endregion        
     }
 }
