@@ -12,10 +12,11 @@ namespace Domurion.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("fixed")]
-    public class UsersController(IUserService userService, PreferencesService preferencesService) : ControllerBase
+    public class UsersController(IUserService userService, PreferencesService preferencesService, Domurion.Helpers.EmailService emailService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
         private readonly PreferencesService _preferencesService = preferencesService;
+        private readonly Domurion.Helpers.EmailService _emailService = emailService;
 
         [HttpPost("register")]
         public IActionResult Register([FromBody] UserDto userDto)
@@ -94,6 +95,18 @@ namespace Domurion.Controllers
                 var prefs = _preferencesService.GetPreferences(user.Id);
                 // Generate JWT token with session timeout
                 var token = Helpers.JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
+
+                // Send login notification email
+                try
+                {
+                    var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+                    var subject = "New Login to Your Account";
+                    var body = $"A new login to your account was detected.\n\nUsername: {user.Username}\nTime: {time}\nIP Address: {ip}\nIf this was not you, please reset your password immediately.";
+                    _emailService.SendEmail(user.Username, subject, body);
+                }
+                catch { /* Ignore email errors for login */ }
+
                 return Ok(new { user.Id, user.Username, token });
             }
             catch (ArgumentException ex)
