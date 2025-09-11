@@ -1,8 +1,10 @@
 using Domurion.Dtos;
 using Domurion.Helpers;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Domurion.Controllers
 {
@@ -91,6 +93,32 @@ namespace Domurion.Controllers
             {
                 return NotFound(new { error = ex.Message });
             }
+        }
+
+        [HttpPost("link-google")]
+        [Authorize]
+        public IActionResult LinkGoogle([FromBody] string googleId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var result = _userService.LinkGoogleAccount(Guid.Parse(userId), googleId);
+            if (!result)
+                return BadRequest("Google account already linked to another user.");
+            return Ok("Google account linked successfully.");
+        }
+
+        [HttpPost("unlink-google")]
+        [Authorize]
+        public IActionResult UnlinkGoogle()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var result = _userService.UnlinkGoogleAccount(Guid.Parse(userId));
+            if (!result)
+                return BadRequest("No Google account to unlink.");
+            return Ok("Google account unlinked successfully.");
         }
     }
 }

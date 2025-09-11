@@ -110,7 +110,7 @@ namespace Domurion.Services
             _context.Users.Remove(user);
             _context.SaveChanges();
         }
-        
+
         public User CreateExternalUser(string email, string? name, string provider)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -131,6 +131,39 @@ namespace Domurion.Services
             _context.Users.Add(user);
             _context.SaveChanges();
             return user;
+        }
+
+        // Link a Google account to an existing user
+        public bool LinkGoogleAccount(Guid userId, string googleId)
+        {
+            if (string.IsNullOrWhiteSpace(googleId))
+                return false;
+            // Ensure no other user has this GoogleId
+            if (_context.Users.Any(u => u.GoogleId == googleId && u.Id != userId))
+                return false;
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+                return false;
+            user.GoogleId = googleId;
+            user.AuthProvider = "Google";
+            _context.SaveChanges();
+            // Audit log
+            AuditLogger.Log(_context, user.Id, user.Username, null, "LinkGoogleAccount", null);
+            return true;
+        }
+        
+        // Unlink a Google account from an existing user
+        public bool UnlinkGoogleAccount(Guid userId)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null || string.IsNullOrEmpty(user.GoogleId))
+                return false;
+            user.GoogleId = null;
+            user.AuthProvider = null;
+            _context.SaveChanges();
+            // Audit log
+            AuditLogger.Log(_context, user.Id, user.Username, null, "UnlinkGoogleAccount", null);
+            return true;
         }
     }
 }

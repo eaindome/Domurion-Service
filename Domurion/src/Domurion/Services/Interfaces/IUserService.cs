@@ -11,6 +11,12 @@ namespace Domurion.Services.Interfaces
         void DeleteUser(Guid userId);
 
         // New: Create user for external auth (Google)
-        User CreateExternalUser(string email, string? name, string provider);
+    User CreateExternalUser(string email, string? name, string provider);
+
+    // Link a Google account to an existing user
+    bool LinkGoogleAccount(Guid userId, string googleId);
+
+    // Unlink a Google account from an existing user
+    bool UnlinkGoogleAccount(Guid userId);
     }
 }

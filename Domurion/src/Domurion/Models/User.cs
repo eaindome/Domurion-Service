@@ -19,5 +19,8 @@ namespace Domurion.Models
         }
 
         public string? AuthProvider { get; set; }
+
+        // For account linking: store Google unique ID if linked
+        public string? GoogleId { get; set; }
     }
 }
