@@ -108,14 +108,67 @@ namespace Domurion.Migrations
                     b.ToTable("PasswordHistories");
                 });
 
+            modelBuilder.Entity("Domurion.Models.SupportRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Resolved")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Username")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SupportRequests");
+                });
+
             modelBuilder.Entity("Domurion.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AuthProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GoogleId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TwoFactorRecoveryCodes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TwoFactorSecret")
                         .HasColumnType("text");
 
                     b.Property<string>("Username")
@@ -125,6 +178,44 @@ namespace Domurion.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Domurion.Models.UserPreferences", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AutoSaveEntries")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PasswordLength")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SessionTimeoutMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ShowPasswordStrength")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("UseLowercase")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("UseNumbers")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("UseSymbols")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("UseUppercase")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserPreferences");
                 });
 #pragma warning restore 612, 618
         }

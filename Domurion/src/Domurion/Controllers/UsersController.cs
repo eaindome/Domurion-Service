@@ -44,6 +44,52 @@ namespace Domurion.Controllers
                 if (user == null)
                     return Unauthorized(new { error = "Invalid username or password." });
 
+                // If 2FA is enabled, require 2FA code
+                if (user.TwoFactorEnabled)
+                {
+                    // Expect 2FA code in X-2FA-Code header
+                    var code = Request.Headers["X-2FA-Code"].ToString();
+                    if (string.IsNullOrWhiteSpace(code))
+                        return Unauthorized(new { error = "2FA code required.", twoFactorRequired = true });
+
+                    bool valid2FA = false;
+                    // Check TOTP
+                    if (!string.IsNullOrEmpty(user.TwoFactorSecret))
+                    {
+                        var totp = new OtpNet.Totp(OtpNet.Base32Encoding.ToBytes(user.TwoFactorSecret));
+                        if (totp.VerifyTotp(code, out _, new OtpNet.VerificationWindow(previous: 1, future: 1)))
+                            valid2FA = true;
+                    }
+                    // Check recovery codes if TOTP failed
+                    if (!valid2FA && !string.IsNullOrEmpty(user.TwoFactorRecoveryCodes))
+                    {
+                        var codes = user.TwoFactorRecoveryCodes.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+                        if (codes.Contains(code))
+                        {
+                            valid2FA = true;
+                            // Remove used code
+                            codes.Remove(code);
+                            user.TwoFactorRecoveryCodes = string.Join(",", codes);
+                            // Save change to DB using a new DataContext instance
+                            using (var scope = HttpContext.RequestServices.CreateScope())
+                            {
+                                var db = scope.ServiceProvider.GetService(typeof(Domurion.Data.DataContext)) as Domurion.Data.DataContext;
+                                if (db != null)
+                                {
+                                    var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
+                                    if (dbUser != null)
+                                    {
+                                        dbUser.TwoFactorRecoveryCodes = user.TwoFactorRecoveryCodes;
+                                        db.SaveChanges();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!valid2FA)
+                        return Unauthorized(new { error = "Invalid 2FA or recovery code.", twoFactorRequired = true });
+                }
+
                 // Fetch user preferences for session timeout
                 var prefs = _preferencesService.GetPreferences(user.Id);
                 // Generate JWT token with session timeout

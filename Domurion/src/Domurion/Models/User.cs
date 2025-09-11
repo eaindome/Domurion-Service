@@ -24,5 +24,10 @@ namespace Domurion.Models
 
         // For account linking: store Google unique ID if linked
         public string? GoogleId { get; set; }
+
+        // Two-Factor Authentication (2FA)
+        public bool TwoFactorEnabled { get; set; } = false;
+        public string? TwoFactorSecret { get; set; }
+        public string? TwoFactorRecoveryCodes { get; set; } // Comma-separated or JSON array
     }
 }
