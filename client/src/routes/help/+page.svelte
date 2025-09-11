@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { authStore } from '$lib/stores/authStore';
+  import { goto } from '$app/navigation';
   
   let searchQuery = '';
   let selectedCategory = 'all';
@@ -9,7 +10,6 @@
     { id: 'all', name: 'All Topics', icon: 'grid' },
     { id: 'account', name: 'Account', icon: 'user' },
     { id: 'security', name: 'Security', icon: 'shield' },
-    { id: 'billing', name: 'Billing', icon: 'credit-card' },
     { id: 'technical', name: 'Technical', icon: 'settings' }
   ];
   
@@ -40,26 +40,14 @@
     },
     {
       id: 5,
-      category: 'billing',
-      question: 'How do I view my billing history?',
-      answer: 'Your billing history is available in Settings > Billing. You can view past invoices, download receipts, and update your payment methods from this section.'
-    },
-    {
-      id: 6,
-      category: 'billing',
-      question: 'Can I change my subscription plan?',
-      answer: 'Yes, you can upgrade or downgrade your plan at any time from Settings > Billing > Plan Management. Changes take effect immediately for upgrades or at the next billing cycle for downgrades.'
-    },
-    {
-      id: 7,
       category: 'technical',
       question: 'What browsers are supported?',
       answer: 'Vault works best on modern browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. We recommend keeping your browser updated for the best experience.'
     },
     {
-      id: 8,
+      id: 6,
       category: 'technical',
-      question: 'Why is Vault running slowly?',
+      question: 'Why is Domurion running slowly?',
       answer: 'Performance issues can be caused by browser extensions, low memory, or network connectivity. Try clearing your browser cache, disabling extensions, or refreshing the page. Contact support if issues persist.'
     }
   ];
@@ -88,20 +76,40 @@
     };
     return icons[iconName as IconName] || icons.grid;
   }
+
+  function handleBack() {
+    if ($authStore.isAuthenticated) {
+        goto('/dashboard');
+    } else {
+        goto('/login');
+    }
+  }
 </script>
 
 <div class="min-h-screen bg-gray-50">
   <!-- Header -->
   <div class="bg-white shadow-sm border-b border-gray-200">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="text-center">
-        <div class="flex items-center justify-center mb-4">
+      <div class="flex items-center justify-between mb-4">
+        <button
+          class="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          on:click={handleBack}
+          aria-label="Back to previous page"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+        <div class="flex items-center justify-center">
           <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
             <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
         </div>
+      </div>
+      <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Help & Support</h1>
         <p class="text-lg text-gray-600 max-w-2xl mx-auto">
           Find answers to common questions or get in touch with our support team
