@@ -5,6 +5,7 @@ using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Microsoft.Extensions.Configuration;
 
 namespace Domurion.Tests
 {
@@ -21,7 +22,21 @@ namespace Domurion.Tests
         private static UsersController CreateController(Data.DataContext context)
         {
             IUserService userService = new UserService(context);
-            return new UsersController(userService);
+            var preferencesService = new PreferencesService(context);
+            // Provide a minimal in-memory configuration for EmailService
+            var inMemorySettings = new Dictionary<string, string>
+            {
+                { "Smtp:Host", "localhost" },
+                { "Smtp:Port", "25" },
+                { "Smtp:Username", "test@example.com" },
+                { "Smtp:Password", "password" },
+                { "Smtp:From", "test@example.com" }
+            };
+            var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings.Select(kv => new KeyValuePair<string, string?>(kv.Key, kv.Value)))
+                .Build();
+            var emailService = new Helpers.EmailService(config);
+            return new UsersController(userService, preferencesService, emailService);
         }
 
         #region Register
