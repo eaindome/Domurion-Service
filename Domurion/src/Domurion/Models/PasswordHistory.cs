@@ -1,5 +1,3 @@
-using System;
-
 namespace Domurion.Models
 {
     public class PasswordHistory
