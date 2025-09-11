@@ -11,5 +11,6 @@ namespace Domurion.Models
         public bool UseSymbols { get; set; } = true;
         public bool AutoSaveEntries { get; set; } = false;
         public bool ShowPasswordStrength { get; set; } = true;
+        public int? SessionTimeoutMinutes { get; set; } // null or 0 = never
     }
 }

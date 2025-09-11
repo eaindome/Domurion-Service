@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Domurion.Helpers;
 using Domurion.Services.Interfaces;
 using Domurion.Models;
+using Domurion.Services;
 using System.Security.Claims;
 
 namespace Domurion.Controllers
@@ -15,11 +16,13 @@ namespace Domurion.Controllers
     {
         private readonly IUserService _userService;
         private readonly IConfiguration _configuration;
+        private readonly PreferencesService _preferencesService;
 
-        public AuthController(IUserService userService, IConfiguration configuration)
+        public AuthController(IUserService userService, IConfiguration configuration, PreferencesService preferencesService)
         {
             _userService = userService;
             _configuration = configuration;
+            _preferencesService = preferencesService;
         }
 
         [HttpGet("google-login")]
@@ -47,8 +50,10 @@ namespace Domurion.Controllers
             var user = _userService.GetByUsername(email);
             user ??= _userService.CreateExternalUser(email, name, "Google");
 
-            // Generate JWT for your app
-            var token = JwtHelper.GenerateJwtToken(user, _configuration);
+            // Fetch user preferences for session timeout
+            var prefs = _preferencesService.GetPreferences(user.Id);
+            // Generate JWT for your app with session timeout
+            var token = JwtHelper.GenerateJwtToken(user, _configuration, prefs);
 
             // Optionally, redirect to frontend with token as query param
             if (!string.IsNullOrEmpty(returnUrl))

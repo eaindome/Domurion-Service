@@ -5,15 +5,17 @@ using Microsoft.AspNetCore.Mvc;
 using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Domurion.Services;
 
 namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("fixed")]
-    public class UsersController(IUserService userService) : ControllerBase
+    public class UsersController(IUserService userService, PreferencesService preferencesService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
+        private readonly PreferencesService _preferencesService = preferencesService;
 
         [HttpPost("register")]
         public IActionResult Register([FromBody] UserDto userDto)
@@ -42,8 +44,10 @@ namespace Domurion.Controllers
                 if (user == null)
                     return Unauthorized(new { error = "Invalid username or password." });
 
-                // Generate JWT token
-                var token = Helpers.JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!);
+                // Fetch user preferences for session timeout
+                var prefs = _preferencesService.GetPreferences(user.Id);
+                // Generate JWT token with session timeout
+                var token = Helpers.JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
                 return Ok(new { user.Id, user.Username, token });
             }
             catch (ArgumentException ex)

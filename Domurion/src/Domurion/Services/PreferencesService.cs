@@ -36,6 +36,7 @@ namespace Domurion.Services
             prefs.UseSymbols = updated.UseSymbols;
             prefs.AutoSaveEntries = updated.AutoSaveEntries;
             prefs.ShowPasswordStrength = updated.ShowPasswordStrength;
+            prefs.SessionTimeoutMinutes = updated.SessionTimeoutMinutes;
             _context.SaveChanges();
             return prefs;
         }
