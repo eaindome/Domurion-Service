@@ -17,5 +17,7 @@ namespace Domurion.Models
             get => _passwordHash;
             set => _passwordHash = value ?? throw new ArgumentNullException(nameof(PasswordHash));
         }
+
+        public string? AuthProvider { get; set; }
     }
 }

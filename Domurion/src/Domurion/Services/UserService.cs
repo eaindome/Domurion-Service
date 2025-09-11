@@ -10,6 +10,7 @@ namespace Domurion.Services
         private readonly DataContext _context = context;
 
         public User Register(string username, string password)
+        // Create user for external auth (e.g. Google)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Username and password are required.");
@@ -108,6 +109,28 @@ namespace Domurion.Services
             _context.Credentials.RemoveRange(credentials);
             _context.Users.Remove(user);
             _context.SaveChanges();
+        }
+        
+        public User CreateExternalUser(string email, string? name, string provider)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("Email is required for external users.");
+            var existingUser = _context.Users.FirstOrDefault(u => u.Username == email);
+            if (existingUser != null)
+            {
+                if (string.IsNullOrEmpty(existingUser.AuthProvider))
+                    throw new InvalidOperationException("A local account with this email already exists. Please log in with your password or link your Google account in settings.");
+                return existingUser;
+            }
+            var user = new User
+            {
+                Username = email,
+                PasswordHash = string.Empty, // No password for external users
+                AuthProvider = provider
+            };
+            _context.Users.Add(user);
+            _context.SaveChanges();
+            return user;
         }
     }
 }
