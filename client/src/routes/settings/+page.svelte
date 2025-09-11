@@ -27,6 +27,7 @@
     confirmPassword: ''
   };
   
+  import { settings } from '$lib/stores/settings';
   // Security settings
   let securitySettings = {
     twoFactorEnabled: false,
@@ -34,6 +35,8 @@
     autoLock: true,
     loginNotifications: true
   };
+
+
   
   // Vault preferences
   let vaultPreferences = {
@@ -64,8 +67,10 @@
     try {
       // TODO: Replace with actual API calls
       // const response = await fetch('/api/user/settings');
-      // const settings = await response.json();
+      // const settingsData = await response.json();
       // Update local state with fetched settings
+      // securitySettings.autoLock = settingsData.autoLock;
+      // settings.set({ ...$settings, autoLock: settingsData.autoLock });
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -128,7 +133,8 @@
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(securitySettings)
       // });
-      
+      // Sync global store
+      settings.update(s => ({ ...s, autoLock: securitySettings.autoLock }));
       successMessage = 'Security settings updated successfully!';
     } catch (error) {
       errorMessage = 'Failed to update security settings.';
@@ -269,7 +275,7 @@
       </div>
     {/if}
 
-    <div class="flex flex-col lg:flex-row gap-8">
+  <div class="flex flex-col lg:flex-row gap-8">
       <!-- Sidebar Navigation -->
       <div class="lg:w-64 flex-shrink-0">
         <nav class="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
