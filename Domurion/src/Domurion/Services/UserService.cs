@@ -9,7 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
-        public User Register(string username, string password)
+        public User Register(string username, string password, string? name = null)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Username and password are required.");
@@ -21,7 +21,7 @@ namespace Domurion.Services
                 throw new InvalidOperationException("Username already exists.");
 
             var hashed = Helper.HashPassword(password);
-            var user = new User { Username = username, PasswordHash = hashed };
+            var user = new User { Username = username, PasswordHash = hashed, Name = name };
             _context.Users.Add(user);
             _context.SaveChanges();
             return user;
@@ -43,7 +43,7 @@ namespace Domurion.Services
             return _context.Users.FirstOrDefault(u => u.Username == username);
         }
 
-        public User UpdateUser(Guid userId, string? newUsername, string? newPassword)
+        public User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null)
         {
             var user = _context.Users.FirstOrDefault(u => u.Id == userId)
                 ?? throw new KeyNotFoundException("User not found.");
@@ -96,6 +96,10 @@ namespace Domurion.Services
 
                 user.PasswordHash = newHash;
             }
+            if (newName != null)
+            {
+                user.Name = newName;
+            }
             _context.SaveChanges();
             return user;
         }
@@ -108,6 +112,61 @@ namespace Domurion.Services
             _context.Credentials.RemoveRange(credentials);
             _context.Users.Remove(user);
             _context.SaveChanges();
+        }
+
+        public User CreateExternalUser(string email, string? name, string provider)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("Email is required for external users.");
+            var existingUser = _context.Users.FirstOrDefault(u => u.Username == email);
+            if (existingUser != null)
+            {
+                if (string.IsNullOrEmpty(existingUser.AuthProvider))
+                    throw new InvalidOperationException("A local account with this email already exists. Please log in with your password or link your Google account in settings.");
+                return existingUser;
+            }
+            var user = new User
+            {
+                Username = email,
+                PasswordHash = string.Empty, // No password for external users
+                AuthProvider = provider
+            };
+            _context.Users.Add(user);
+            _context.SaveChanges();
+            return user;
+        }
+
+        // Link a Google account to an existing user
+        public bool LinkGoogleAccount(Guid userId, string googleId)
+        {
+            if (string.IsNullOrWhiteSpace(googleId))
+                return false;
+            // Ensure no other user has this GoogleId
+            if (_context.Users.Any(u => u.GoogleId == googleId && u.Id != userId))
+                return false;
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+                return false;
+            user.GoogleId = googleId;
+            user.AuthProvider = "Google";
+            _context.SaveChanges();
+            // Audit log
+            AuditLogger.Log(_context, user.Id, user.Username, null, "LinkGoogleAccount", null);
+            return true;
+        }
+        
+        // Unlink a Google account from an existing user
+        public bool UnlinkGoogleAccount(Guid userId)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null || string.IsNullOrEmpty(user.GoogleId))
+                return false;
+            user.GoogleId = null;
+            user.AuthProvider = null;
+            _context.SaveChanges();
+            // Audit log
+            AuditLogger.Log(_context, user.Id, user.Username, null, "UnlinkGoogleAccount", null);
+            return true;
         }
     }
 }

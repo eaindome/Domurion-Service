@@ -46,22 +46,34 @@ namespace Domurion.Helpers
             return Convert.ToBase64String(hash);
         }
 
-        public static string GeneratePassword(int length = 16)
+        public static string GeneratePassword(
+            int length = 16,
+            bool useUppercase = true,
+            bool useLowercase = true,
+            bool useNumbers = true,
+            bool useSymbols = true)
         {
             if (length < 8) length = 8;
-            const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            const string lower = "abcdefghijklmnopqrstuvwxyz";
-            const string digits = "0123456789";
-            const string specials = "!@#$%^&*()-_=+[]{}|;:,.<>?";
-            string all = upper + lower + digits + specials;
+            if (length > 64) length = 64;
+            var charSets = new List<string>();
+            if (useUppercase) charSets.Add("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+            if (useLowercase) charSets.Add("abcdefghijklmnopqrstuvwxyz");
+            if (useNumbers) charSets.Add("0123456789");
+            if (useSymbols) charSets.Add("!@#$%^&*()-_=+[]{}|;:,.<>?");
+            if (charSets.Count == 0) charSets.Add("abcdefghijklmnopqrstuvwxyz"); // fallback
+            string all = string.Concat(charSets);
             var rnd = RandomNumberGenerator.Create();
             var chars = new char[length];
-            // Ensure at least one of each type
-            chars[0] = upper[GetRandomIndex(rnd, upper.Length)];
-            chars[1] = lower[GetRandomIndex(rnd, lower.Length)];
-            chars[2] = digits[GetRandomIndex(rnd, digits.Length)];
-            chars[3] = specials[GetRandomIndex(rnd, specials.Length)];
-            for (int i = 4; i < length; i++)
+            // Ensure at least one of each selected type (if enough length)
+            int i = 0;
+            foreach (var set in charSets)
+            {
+                if (i < length)
+                {
+                    chars[i++] = set[GetRandomIndex(rnd, set.Length)];
+                }
+            }
+            for (; i < length; i++)
                 chars[i] = all[GetRandomIndex(rnd, all.Length)];
             // Shuffle
             return new string(chars.OrderBy(_ => GetRandomIndex(rnd, length)).ToArray());

@@ -8,7 +8,7 @@ namespace Domurion.Helpers
 {
     public static class JwtHelper
     {
-        public static string GenerateJwtToken(User user, IConfiguration configuration)
+        public static string GenerateJwtToken(User user, IConfiguration configuration, UserPreferences? preferences = null)
         {
             var jwtKey = configuration["Jwt:Key"];
             if (string.IsNullOrEmpty(jwtKey))
@@ -24,11 +24,19 @@ namespace Domurion.Helpers
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
+            // Determine expiration from preferences (SessionTimeoutMinutes), fallback to 12 hours
+            int? sessionTimeout = preferences?.SessionTimeoutMinutes;
+            DateTime expires = DateTime.UtcNow.AddHours(12);
+            if (sessionTimeout.HasValue && sessionTimeout.Value > 0)
+            {
+                expires = DateTime.UtcNow.AddMinutes(sessionTimeout.Value);
+            }
+
             var token = new JwtSecurityToken(
                 issuer: jwtIssuer,
                 audience: null,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(12),
+                expires: expires,
                 signingCredentials: credentials
             );
 
