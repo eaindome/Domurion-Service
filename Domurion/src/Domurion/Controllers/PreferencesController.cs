@@ -1,3 +1,4 @@
+using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Domurion.Services;
@@ -9,9 +10,9 @@ namespace Domurion.Controllers
     [ApiController]
     [Route("api/user/preferences")]
     [Authorize]
-    public class PreferencesController(PreferencesService preferencesService) : ControllerBase
+    public class PreferencesController(IPreferencesService preferencesService) : ControllerBase
     {
-        private readonly PreferencesService _preferencesService = preferencesService;
+        private readonly IPreferencesService _preferencesService = preferencesService;
 
         [HttpGet]
         public ActionResult<UserPreferences> Get()
