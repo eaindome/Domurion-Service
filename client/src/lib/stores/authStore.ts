@@ -25,10 +25,11 @@ function createAuthStore() {
 
 	return {
 		subscribe,
-		setUser: (user: User) => update(state => ({ ...state, user, isAuthenticated: true, loading: false, error: null })),
+		setUser: (user: User) =>
+			update((state) => ({ ...state, user, isAuthenticated: true, loading: false, error: null })),
 		clearUser: () => set(initialState),
-		setLoading: (loading: boolean) => update(state => ({ ...state, loading })),
-		setError: (error: string | null) => update(state => ({ ...state, error, loading: false })),
+		setLoading: (loading: boolean) => update((state) => ({ ...state, loading })),
+		setError: (error: string | null) => update((state) => ({ ...state, error, loading: false })),
 		logout: () => set(initialState)
 	};
 }

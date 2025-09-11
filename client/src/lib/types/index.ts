@@ -1,35 +1,35 @@
 // Form validation utility for vault entry
 export type VaultEntryForm = {
-        siteName?: string;
-        url?: string;
-        username?: string;
-        password?: string;
-        notes?: string;
+	siteName?: string;
+	url?: string;
+	username?: string;
+	password?: string;
+	notes?: string;
 };
 
 export type VaultEntryErrors = {
-        siteName?: string;
-        username?: string;
-        password?: string;
+	siteName?: string;
+	username?: string;
+	password?: string;
 };
 
 export type VaultEntry = {
-    siteName: string;
-    url?: string;
-    username: string;
-    password: string;
-    notes?: string;
-    [key: string]: string | undefined | unknown;
+	siteName: string;
+	url?: string;
+	username: string;
+	password: string;
+	notes?: string;
+	[key: string]: string | undefined | unknown;
 };
 
 // Dashboard vault item type
 export interface VaultItem {
-    id: number;
-    siteName: string;
-    siteUrl: string;
-    username: string;
-    password: string;
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
+	id: number;
+	siteName: string;
+	siteUrl: string;
+	username: string;
+	password: string;
+	notes?: string;
+	createdAt: string;
+	updatedAt: string;
 }
