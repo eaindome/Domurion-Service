@@ -388,22 +388,32 @@
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal}
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-      <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+  <div 
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+    on:keydown={(e) => { if (e.key === 'Escape') { showDeleteModal = false; itemToDelete = null; } }}
+  >
+    <!-- Glassmorphic Backdrop -->
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/30 backdrop-blur-sm"
+      aria-label="Close delete modal"
+      on:click={() => { showDeleteModal = false; itemToDelete = null; }}
+      tabindex="0"
+      style="border: none; padding: 0; margin: 0; cursor: pointer;"
+    ></button>
+    <div class="relative bg-white backdrop-blur-xl border border-white/30 shadow-2xl rounded-3xl max-w-md w-full p-8" style="box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);">
+      <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4 shadow-md">
         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
         </svg>
       </div>
-      
-      <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">
-        Delete Entry
-      </h3>
-      
-      <p class="text-sm text-gray-600 text-center mb-6">
+      <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Delete Entry</h3>
+      <p class="text-sm text-gray-700 text-center mb-6">
         Are you sure you want to delete the entry for <strong>{itemToDelete?.siteName}</strong>? This action cannot be undone.
       </p>
-      
       <div class="flex space-x-3">
         <button
           on:click={() => { showDeleteModal = false; itemToDelete = null; }}
