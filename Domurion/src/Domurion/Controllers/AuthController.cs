@@ -12,11 +12,11 @@ namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/auth")]
-    public class AuthController(IUserService userService, IConfiguration configuration, PreferencesService preferencesService) : ControllerBase
+    public class AuthController(IUserService userService, IConfiguration configuration, IPreferencesService preferencesService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
         private readonly IConfiguration _configuration = configuration;
-        private readonly PreferencesService _preferencesService = preferencesService;
+        private readonly IPreferencesService _preferencesService = preferencesService;
 
         [HttpGet("google-login")]
         public IActionResult GoogleLogin(string? returnUrl = null)
