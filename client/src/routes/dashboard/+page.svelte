@@ -51,6 +51,12 @@
     email: 'john.doe@email.com',
     name: 'John Doe'
   };
+
+  // User menu dropdown state
+  let showUserMenu = false;
+  function setTimeoutMenuClose() {
+    setTimeout(() => showUserMenu = false, 120);
+  }
   
   // Filter vault items based on search
   $: filteredItems = vaultItems.filter(item => 
@@ -108,6 +114,12 @@
     // TODO: Clear auth store and redirect
     goto('/login');
   }
+
+  function handleSettingsClick() {
+    showUserMenu = false;
+    console.log('Navigating to settings');
+    setTimeout(() => goto('/settings'), 10);
+  }
 </script>
 
 <svelte:head>
@@ -116,41 +128,152 @@
 
 <div class="min-h-screen bg-gray-50">
   <!-- Navigation Header -->
-  <nav class="bg-white shadow-sm border-b border-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <!-- Logo and Brand -->
-        <div class="flex items-center">
-          <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
-          </div>
-          <span class="ml-3 text-xl font-semibold text-gray-900">Vault</span>
+<nav class="bg-white shadow-sm border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+      <!-- Logo and Brand -->
+      <div class="flex items-center">
+        <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <span class="ml-3 text-xl font-semibold text-gray-900">Vault</span>
+      </div>
+      
+      <!-- User Menu -->
+      <div class="flex items-center space-x-6">
+        <!-- Welcome message with better typography -->
+        <div class="hidden sm:flex items-center">
+          <span class="text-sm font-medium text-gray-600">Welcome back,</span>
+          <span class="ml-1 text-sm font-semibold text-gray-900">{user.name}</span>
         </div>
         
-        <!-- User Menu -->
-        <div class="flex items-center space-x-4">
-          <span class="text-sm text-gray-700">Welcome, {user.name}</span>
-          <div class="relative">
-            <button
-              class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                <span class="text-indigo-600 font-medium">{user.name.charAt(0)}</span>
-              </div>
-            </button>
-          </div>
+        <!-- User dropdown with enhanced design -->
+        <div class="relative" on:focusout={setTimeoutMenuClose}>
           <button
-            on:click={logout}
-            class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            class="group flex items-center space-x-2 p-1 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 transition-all duration-200"
+            aria-haspopup="true"
+            aria-expanded={showUserMenu}
+            aria-label="User menu"
+            on:click={() => showUserMenu = !showUserMenu}
           >
-            Sign out
+            <!-- Avatar with status indicator -->
+            <div class="relative">
+              <div class="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                <span class="text-white font-semibold text-sm">{user.name.charAt(0)}</span>
+              </div>
+              <!-- Online status indicator -->
+              <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+            </div>
+            
+            <!-- Chevron with smooth rotation -->
+            <svg 
+              class="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 {showUserMenu ? 'rotate-180' : 'rotate-0'}" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
+          
+          <!-- Enhanced dropdown menu -->
+          {#if showUserMenu}
+            <div class="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-50 animate-menu-enter">
+              <!-- User info section -->
+              <div class="px-4 py-3 border-b border-gray-100">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center">
+                    <span class="text-white font-semibold">{user.name.charAt(0)}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                    <p class="text-xs text-gray-500 truncate">{user.email || 'user@example.com'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Menu items -->
+              <div class="py-1">
+                <button
+                  type="button"
+                  class="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-150"
+                  on:mousedown={handleSettingsClick}
+                >
+                  <svg class="w-4 h-4 mr-3 text-indigo-500 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Account Settings</span>
+                </button>
+                
+                <button
+                  type="button"
+                  class="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-all duration-150"
+                  on:click={() => { showUserMenu = false; /* handleHelpClick(); */ }}
+                >
+                  <svg class="w-4 h-4 mr-3 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Help & Support</span>
+                </button>
+              </div>
+              
+              <!-- Separator -->
+              <div class="border-t border-gray-100 my-1"></div>
+              
+              <!-- Sign out button -->
+              <button
+                on:click={() => { showUserMenu = false; logout(); }}
+                class="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-150"
+                tabindex="0"
+              >
+                <svg class="w-4 h-4 mr-3 text-red-500 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m10 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h8a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
-  </nav>
+  </div>
+</nav>
+
+<style>
+  /* Enhanced menu animations */
+  @keyframes menu-enter {
+    from { 
+      opacity: 0; 
+      transform: translateY(-8px) scale(0.95);
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  .animate-menu-enter {
+    animation: menu-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    transform-origin: top right;
+  }
+  
+  /* Smooth transitions for interactive elements */
+  .group:hover .group-hover\:text-indigo-600 {
+    transition-property: color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Custom scrollbar for long user names/emails */
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>
 
   <!-- Main Content -->
   <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
