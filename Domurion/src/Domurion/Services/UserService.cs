@@ -9,8 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
-        public User Register(string username, string password)
-        // Create user for external auth (e.g. Google)
+        public User Register(string username, string password, string? name = null)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Username and password are required.");
@@ -22,7 +21,7 @@ namespace Domurion.Services
                 throw new InvalidOperationException("Username already exists.");
 
             var hashed = Helper.HashPassword(password);
-            var user = new User { Username = username, PasswordHash = hashed };
+            var user = new User { Username = username, PasswordHash = hashed, Name = name };
             _context.Users.Add(user);
             _context.SaveChanges();
             return user;
@@ -44,7 +43,7 @@ namespace Domurion.Services
             return _context.Users.FirstOrDefault(u => u.Username == username);
         }
 
-        public User UpdateUser(Guid userId, string? newUsername, string? newPassword)
+        public User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null)
         {
             var user = _context.Users.FirstOrDefault(u => u.Id == userId)
                 ?? throw new KeyNotFoundException("User not found.");
@@ -96,6 +95,10 @@ namespace Domurion.Services
                 }
 
                 user.PasswordHash = newHash;
+            }
+            if (newName != null)
+            {
+                user.Name = newName;
             }
             _context.SaveChanges();
             return user;

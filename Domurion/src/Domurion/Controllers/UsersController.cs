@@ -20,8 +20,8 @@ namespace Domurion.Controllers
         {
             try
             {
-                var user = _userService.Register(userDto.Username, userDto.Password);
-                return Ok(new { user.Id, user.Username });
+                var user = _userService.Register(userDto.Username, userDto.Password, userDto.Name);
+                return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (ArgumentException ex)
             {
@@ -57,8 +57,11 @@ namespace Domurion.Controllers
         {
             try
             {
-                var user = _userService.UpdateUser(userId, newUsername, newPassword);
-                return Ok(new { user.Id, user.Username });
+                // Accept name as an optional query parameter for update
+                var name = Request.Query["name"].ToString();
+                if (string.IsNullOrWhiteSpace(name)) name = null;
+                var user = _userService.UpdateUser(userId, newUsername, newPassword, name);
+                return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (KeyNotFoundException ex)
             {
