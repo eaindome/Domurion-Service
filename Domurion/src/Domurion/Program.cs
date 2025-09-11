@@ -36,6 +36,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
             }));
+
+    // Custom policy for 2FA verification endpoints
+    options.AddPolicy("2fa-verify", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: key => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
 });
 
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -78,6 +90,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Apply rate limiting globally; per-endpoint policies are set by endpoint metadata (e.g., [RateLimit] attribute in .NET 8+)
 app.UseRateLimiter();
 app.MapControllers();
 app.Run();
