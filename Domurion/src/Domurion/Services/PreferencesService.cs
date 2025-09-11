@@ -1,11 +1,16 @@
+using Domurion.Services.Interfaces;
 using Domurion.Models;
 using Domurion.Data;
 
 namespace Domurion.Services
 {
-    public class PreferencesService(DataContext context)
+    public class PreferencesService : IPreferencesService
     {
-        private readonly DataContext _context = context;
+        private readonly DataContext _context;
+        public PreferencesService(DataContext context)
+        {
+            _context = context;
+        }
 
         public UserPreferences GetPreferences(Guid userId)
         {
