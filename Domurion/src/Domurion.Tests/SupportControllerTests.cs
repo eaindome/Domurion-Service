@@ -25,7 +25,7 @@ namespace Domurion.Tests
 			var req = new SupportRequest { Username = "alice" };
 			var result = controller.Request2FAReset(req);
 			var ok = Assert.IsType<OkObjectResult>(result);
-			Assert.Contains("submitted", ok.Value.ToString(), System.StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("submitted", ok.Value!.ToString(), System.StringComparison.OrdinalIgnoreCase);
 			Assert.Single(context.SupportRequests);
 		}
 
@@ -37,7 +37,7 @@ namespace Domurion.Tests
 			var req = new SupportRequest();
 			var result = controller.Request2FAReset(req);
 			var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-			Assert.Contains("required", badRequest.Value.ToString(), System.StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("required", badRequest.Value!.ToString(), System.StringComparison.OrdinalIgnoreCase);
 		}
 
 		[Fact]
@@ -64,7 +64,7 @@ namespace Domurion.Tests
 			var controller = new SupportController(context);
 			var result = controller.Resolve2FAReset(req.Id, "reset by admin");
 			var ok = Assert.IsType<OkObjectResult>(result);
-			Assert.Contains("reset", ok.Value.ToString(), System.StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("reset", ok.Value!.ToString(), System.StringComparison.OrdinalIgnoreCase);
 			context.Entry(user).Reload();
 			Assert.False(user.TwoFactorEnabled);
 			Assert.Null(user.TwoFactorSecret);
@@ -82,7 +82,7 @@ namespace Domurion.Tests
 			var controller = new SupportController(context);
 			var result = controller.Resolve2FAReset(Guid.NewGuid(), "note");
 			var notFound = Assert.IsType<NotFoundObjectResult>(result);
-			Assert.Contains("not found", notFound.Value.ToString(), System.StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("not found", notFound.Value!.ToString(), System.StringComparison.OrdinalIgnoreCase);
 		}
 
 		[Fact]
@@ -94,7 +94,7 @@ namespace Domurion.Tests
 			var controller = new SupportController(context);
 			var result = controller.Resolve2FAReset(req.Id, "note");
 			var notFound = Assert.IsType<NotFoundObjectResult>(result);
-			Assert.Contains("User not found", notFound.Value.ToString(), System.StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("User not found", notFound.Value!.ToString(), System.StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }
