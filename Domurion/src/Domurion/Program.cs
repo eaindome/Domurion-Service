@@ -100,3 +100,12 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 app.MapControllers();
 app.Run();
+
+// For integration testing with WebApplicationFactory<Program>
+public partial class Program
+{
+    public static void Main(string[] args)
+    {
+        // The actual logic is in the top-level statements above.
+    }
+}
