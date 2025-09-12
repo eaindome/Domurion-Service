@@ -11,6 +11,17 @@ using System.Text;
 Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
+// Add CORS policy for frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendCors", policy =>
+    {
+        policy.WithOrigins("https://domurion-service.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -86,8 +97,12 @@ builder.Services.AddAuthentication(options =>
 var app = builder.Build();
 
 
+
 // Register global error handling middleware
 app.UseMiddleware<Domurion.Helpers.ErrorHandlingMiddleware>();
+
+// Use CORS before authentication/authorization
+app.UseCors("FrontendCors");
 
 if (app.Environment.IsDevelopment())
 {
@@ -97,6 +112,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Apply rate limiting globally; per-endpoint policies are set by endpoint metadata (e.g., [RateLimit] attribute in .NET 8+)
+
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
