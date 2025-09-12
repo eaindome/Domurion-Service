@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Domurion.Tests
 {
@@ -30,13 +31,26 @@ namespace Domurion.Tests
                 { "Smtp:Port", "25" },
                 { "Smtp:Username", "test@example.com" },
                 { "Smtp:Password", "password" },
-                { "Smtp:From", "test@example.com" }
+                { "Smtp:From", "test@example.com" },
+                { "Jwt:Key", "TEST_KEY_FOR_UNIT_TESTS_12345678901234567890" },
+                { "Jwt:Issuer", "TestIssuer" }
             };
             var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
                 .AddInMemoryCollection(inMemorySettings.Select(kv => new KeyValuePair<string, string?>(kv.Key, kv.Value)))
                 .Build();
             var emailService = new Helpers.EmailService(config);
-            return new UsersController(userService, preferencesService, emailService);
+            var controller = new UsersController(userService, preferencesService, emailService);
+            // Assign a default ControllerContext with DefaultHttpContext so Request/HttpContext are not null
+            var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+            // Register IConfiguration in RequestServices for JWT generation
+            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+            services.AddSingleton<IConfiguration>(config);
+            httpContext.RequestServices = services.BuildServiceProvider();
+            controller.ControllerContext = new ControllerContext()
+            {
+                HttpContext = httpContext
+            };
+            return controller;
         }
 
         #region Register
