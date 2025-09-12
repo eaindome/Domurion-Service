@@ -1,0 +1,35 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: domuriondb
+      POSTGRES_USER: domurionuser
+      POSTGRES_PASSWORD: domurionpass
+    ports:
+      - "5434:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./src/Domurion
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DB_HOST: db
+      DB: domuriondb
+      DB_USERNAME: domurionuser
+      DB_PASSWORD: domurionpass
+      JWT_KEY: your_jwt_key
+      JWT_ISSUER: your_jwt_issuer
+    ports:
+      - "8080:80"
+    # Uncomment if you want to watch for code changes in development
+    # volumes:
+    #   - ./src/Domurion:/app
+
+volumes:
+  db_data:
