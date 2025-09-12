@@ -98,5 +98,5 @@ namespace Domurion.Tests
             Assert.True(password.Length >= 8);
         }
         #endregion
-	}
+    }
 }

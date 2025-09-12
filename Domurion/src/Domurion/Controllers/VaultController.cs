@@ -113,7 +113,8 @@ namespace Domurion.Controllers
         public IActionResult Export(Guid userId)
         {
             var credentials = _passwordVaultService.GetCredentials(userId)
-                .Select(c => new {
+                .Select(c => new
+                {
                     c.Site,
                     c.Username,
                     Password = _passwordVaultService.RetrievePassword(c.Id, userId),

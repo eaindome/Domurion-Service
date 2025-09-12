@@ -154,7 +154,7 @@ namespace Domurion.Services
             AuditLogger.Log(_context, user.Id, user.Username, null, "LinkGoogleAccount", null);
             return true;
         }
-        
+
         // Unlink a Google account from an existing user
         public bool UnlinkGoogleAccount(Guid userId)
         {
