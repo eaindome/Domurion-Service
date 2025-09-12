@@ -166,7 +166,7 @@
 				</svg>
 			</button>
 			<a
-				href="/vault/{item.id}/edit"
+				href={`/vault/${item.id}/edit`}
 				class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
 				title="Edit entry"
 				aria-label="Edit entry"
