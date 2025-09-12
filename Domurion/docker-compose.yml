@@ -18,18 +18,19 @@ services:
     depends_on:
       - db
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      DB_HOST: db
-      DB: domuriondb
-      DB_USERNAME: domurionuser
-      DB_PASSWORD: domurionpass
-      JWT_KEY: your_jwt_key
-      JWT_ISSUER: your_jwt_issuer
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__DefaultConnection: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      Jwt__Key: ${JWT__KEY}
+      Jwt__Issuer: ${JWT__ISSUER}
+      Smtp__Host: ${SMTP__HOST}
+      Smtp__Port: ${SMTP__PORT}
+      Smtp__Username: ${SMTP__USERNAME}
+      Smtp__Password: ${SMTP__PASSWORD}
+      Smtp__From: ${SMTP__FROM}
     ports:
       - "8080:80"
-    # Uncomment if you want to watch for code changes in development
-    # volumes:
-    #   - ./src/Domurion:/app
+    volumes:
+      - ./src/Domurion:/app
 
 volumes:
   db_data:
