@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -22,6 +23,15 @@ namespace Domurion.Tests
         {
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                builder.ConfigureAppConfiguration((context, configBuilder) =>
+                {
+                    var dict = new System.Collections.Generic.Dictionary<string, string?>
+                    {
+                        {"Jwt:Key", "TEST_KEY_FOR_TESTS_12345678901234567890"},
+                        {"Jwt:Issuer", "TestIssuer"}
+                    };
+                    configBuilder.AddInMemoryCollection(dict);
+                });
                 builder.ConfigureServices(services => { });
                 builder.Configure(app =>
                 {

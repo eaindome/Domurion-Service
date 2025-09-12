@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -31,41 +32,29 @@ namespace Domurion.Tests
         {
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                builder.ConfigureAppConfiguration((context, configBuilder) =>
+                {
+                    // Remove all previous config sources so our in-memory config is highest priority
+                    configBuilder.Sources.Clear();
+                    var dict = new Dictionary<string, string?>
+                    {
+                        {"Jwt:Key", JwtKey},
+                        {"Jwt:Issuer", JwtIssuer},
+                        {"Jwt:Audience", "test-audience"},
+                        {"Authentication:Google:ClientId", "dummy-client-id"},
+                        {"Authentication:Google:ClientSecret", "dummy-client-secret"}
+                    };
+                    configBuilder.AddInMemoryCollection(dict);
+                });
                 builder.ConfigureServices(services =>
                 {
-                    // Override JWT settings for test
+                    services.AddControllers().AddApplicationPart(typeof(TestAuthController).Assembly);
+                    // Add a post-configure action to log the JWT config at runtime for debugging
                     services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                     {
-                        options.TokenValidationParameters = new TokenValidationParameters
-                        {
-                            ValidateIssuer = true,
-                            ValidateAudience = false,
-                            ValidateLifetime = true,
-                            ValidateIssuerSigningKey = true,
-                            ValidIssuer = JwtIssuer,
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtKey))
-                        };
-                    });
-                });
-                builder.Configure(app =>
-                {
-                    app.UseRouting();
-                    app.UseAuthentication();
-                    app.UseAuthorization();
-                    app.UseEndpoints(endpoints =>
-                    {
-                        endpoints.MapGet("/auth-protected", async context =>
-                        {
-                            if (!context.User.Identity?.IsAuthenticated ?? true)
-                            {
-                                context.Response.StatusCode = 401;
-                                return;
-                            }
-                            var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                            var email = context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new { userId, email }));
-                        }).RequireAuthorization();
+                        var sp = services.BuildServiceProvider();
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        System.Diagnostics.Debug.WriteLine($"[TEST DEBUG] Jwt:Key = {config["Jwt:Key"]}, Jwt:Issuer = {config["Jwt:Issuer"]}, Jwt:Audience = {config["Jwt:Audience"]}");
                     });
                 });
             });
@@ -121,6 +110,22 @@ namespace Domurion.Tests
                 signingCredentials: creds
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+    }
+
+    [ApiController]
+    [Route("/auth-protected")]
+    public class TestAuthController : ControllerBase
+    {
+        [HttpGet]
+        [Authorize]
+        public IActionResult Get()
+        {
+            if (!User.Identity?.IsAuthenticated ?? true)
+                return Unauthorized();
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            return Ok(new { userId, email });
         }
     }
 }
