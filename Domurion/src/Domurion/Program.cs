@@ -82,7 +82,12 @@ builder.Services.AddAuthentication(options =>
     googleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new InvalidOperationException("Google ClientSecret is not configured.");
 });
 
+
 var app = builder.Build();
+
+
+// Register global error handling middleware
+app.UseMiddleware<Domurion.Helpers.ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
