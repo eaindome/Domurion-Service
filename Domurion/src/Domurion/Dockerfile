@@ -19,6 +19,6 @@ COPY --from=build /app/out ./
 EXPOSE 80
 
 # Set environment variables (optional)
-# ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 ENTRYPOINT ["dotnet", "Domurion.dll"]

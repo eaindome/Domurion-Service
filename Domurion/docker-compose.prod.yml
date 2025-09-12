@@ -1,0 +1,24 @@
+version: '3.9'
+services:
+  backend:
+    build:
+      context: ./src/Domurion
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__DefaultConnection: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      Jwt__Key: ${JWT__KEY}
+      Jwt__Issuer: ${JWT__ISSUER}
+      Smtp__Host: ${SMTP__HOST}
+      Smtp__Port: ${SMTP__PORT}
+      Smtp__Username: ${SMTP__USERNAME}
+      Smtp__Password: ${SMTP__PASSWORD}
+      Smtp__From: ${SMTP__FROM}
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src/Domurion:/app
+
+volumes:
+  db_data:
