@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
       - name: Lint (format check)
-        run: dotnet format --verify-no-changes
+        run: dotnet format Domurion.sln --verify-no-changes
       - name: Run tests
         run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
         working-directory: Domurion/src/Domurion
