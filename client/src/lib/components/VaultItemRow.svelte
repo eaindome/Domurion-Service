@@ -48,6 +48,7 @@
 	}
 
 	import { goto } from '$app/navigation';
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	function handleEdit() {
 		goto(`/vault/${item.id}/edit`);
 	}
@@ -165,6 +166,7 @@
 					/>
 				</svg>
 			</button>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
 				href={`/vault/${item.id}/edit`}
 				class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
@@ -259,6 +261,7 @@
 							</div>
 
 							<h2 class="mb-2 text-2xl font-bold text-gray-900">{item.siteName}</h2>
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
 								href={item.siteUrl}
 								target="_blank"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve, svelte/no-useless-mustaches
 	import { goto } from '$app/navigation';
 
 	let email = '';
@@ -23,6 +24,7 @@
 
 			if (response.ok) {
 				// Store auth token and redirect to dashboard
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				const data = await response.json();

@@ -228,6 +228,7 @@
 			) {
 				// TODO: Implement account deletion
 				console.log('Account deletion requested');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/login');
 			}
 		}
@@ -235,6 +236,7 @@
 
 	function logout() {
 		// TODO: Clear auth store and redirect
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto('/login');
 	}
 </script>

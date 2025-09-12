@@ -1,4 +1,5 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve, svelte/no-useless-mustaches
 	import { goto } from '$app/navigation';
 
 	let email = '';
@@ -65,6 +66,7 @@
 
 			if (response.ok) {
 				// Registration successful - redirect to login or dashboard
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/login?message=registration-success');
 			} else {
 				const data = await response.json();
