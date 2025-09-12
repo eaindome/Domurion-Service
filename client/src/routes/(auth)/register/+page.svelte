@@ -102,7 +102,7 @@
 		<h2 class="mt-6 text-center text-3xl font-semibold text-gray-900">Create your account</h2>
 		<p class="mt-2 text-center text-sm text-gray-600">
 			Already have an account? <a
-				href={"/login"}
+				href={'/login'}
 				class="font-medium text-indigo-600 transition-colors hover:text-indigo-500">Sign in</a
 			>
 		</p>
@@ -353,11 +353,11 @@
 					<div class="ml-3 text-sm">
 						<label for="terms" class="text-gray-700">
 							I agree to the <a
-								href={"/terms"}
+								href={'/terms'}
 								class="font-medium text-indigo-600 hover:text-indigo-500">Terms of Service</a
 							>
 							and
-							<a href={"/privacy"} class="font-medium text-indigo-600 hover:text-indigo-500"
+							<a href={'/privacy'} class="font-medium text-indigo-600 hover:text-indigo-500"
 								>Privacy Policy</a
 							>
 						</label>

@@ -112,7 +112,7 @@
 			user.name = accountForm.name;
 			user.email = accountForm.email;
 		} catch (error) {
-			console.log(`Error: ${error}`)
+			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update account. Please try again.';
 		} finally {
 			isLoading = false;
