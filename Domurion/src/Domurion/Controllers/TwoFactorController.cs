@@ -142,7 +142,7 @@ namespace Domurion.Controllers
             AuditLogger.Log(_context, user.Id, user.Username, null, "2FARecoveryCodeUsed", null);
             return Ok("Recovery code accepted.");
         }
-        
+
         [HttpGet("status")]
         public IActionResult Get2FAStatus()
         {

@@ -64,7 +64,7 @@ namespace Domurion.Services
             AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
             return CryptoHelper.DecryptPassword(credential.EncryptedPassword);
         }
-        
+
         public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? ipAddress = null)
         {
             var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)

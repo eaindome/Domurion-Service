@@ -82,7 +82,12 @@ builder.Services.AddAuthentication(options =>
     googleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new InvalidOperationException("Google ClientSecret is not configured.");
 });
 
+
 var app = builder.Build();
+
+
+// Register global error handling middleware
+app.UseMiddleware<Domurion.Helpers.ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -93,5 +98,16 @@ if (app.Environment.IsDevelopment())
 
 // Apply rate limiting globally; per-endpoint policies are set by endpoint metadata (e.g., [RateLimit] attribute in .NET 8+)
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// For integration testing with WebApplicationFactory<Program>
+public partial class Program
+{
+    public static void Main(string[] args)
+    {
+        // The actual logic is in the top-level statements above.
+    }
+}

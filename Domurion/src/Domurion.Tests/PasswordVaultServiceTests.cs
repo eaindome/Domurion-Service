@@ -356,7 +356,8 @@ namespace Domurion.Tests
             var cred1 = vaultService.AddCredential(userId, "site1.com", "user1", "StrongP@ssw0rd!");
             var cred2 = vaultService.AddCredential(userId, "site2.com", "user2", "NewStr0ngP@ss1!");
             var credentials = vaultService.GetCredentials(userId).ToList();
-            var exported = credentials.Select(c => new {
+            var exported = credentials.Select(c => new
+            {
                 c.Site,
                 c.Username,
                 Password = vaultService.RetrievePassword(c.Id, userId)
