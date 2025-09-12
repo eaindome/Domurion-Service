@@ -1,0 +1,3 @@
+# Local environment variable files (never commit secrets)
+.env
+.env.production.sample
