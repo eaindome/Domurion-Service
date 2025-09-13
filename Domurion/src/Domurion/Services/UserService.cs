@@ -9,6 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
+        #region User management
         public User Register(string username, string password, string? name = null)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -36,11 +37,6 @@ namespace Domurion.Services
             if (user != null && Helper.VerifyPassword(password, user.PasswordHash))
                 return user;
             return null;
-        }
-
-        public User? GetByUsername(string username)
-        {
-            return _context.Users.FirstOrDefault(u => u.Username == username);
         }
 
         public User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null)
@@ -113,7 +109,21 @@ namespace Domurion.Services
             _context.Users.Remove(user);
             _context.SaveChanges();
         }
+        #endregion
 
+        #region User details
+        public User? GetByUsername(string username)
+        {
+            return _context.Users.FirstOrDefault(u => u.Username == username);
+        }
+
+        public User? GetById(Guid userId)
+        {
+            return _context.Users.FirstOrDefault(u => u.Id == userId);
+        }
+        #endregion
+
+        #region External Auth (Google)
         public User CreateExternalUser(string email, string? name, string provider)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -135,7 +145,9 @@ namespace Domurion.Services
             _context.SaveChanges();
             return user;
         }
+        #endregion
 
+        #region Google Linking
         // Link a Google account to an existing user
         public bool LinkGoogleAccount(Guid userId, string googleId)
         {
@@ -168,5 +180,6 @@ namespace Domurion.Services
             AuditLogger.Log(_context, user.Id, user.Username, null, "UnlinkGoogleAccount", null);
             return true;
         }
+        #endregion
     }
 }
