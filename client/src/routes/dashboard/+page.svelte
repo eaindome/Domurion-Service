@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
 	import navLogo from '$lib/assets/navLogo.png';
+	import { authStore } from '$lib/stores/authStore';
 
 	import VaultItemRow from '$lib/components/VaultItemRow.svelte';
 	import type { VaultItem } from '$lib/types';
@@ -113,8 +114,11 @@
 	}
 
 	function logout() {
-		// TODO: Clear auth store and redirect
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		// Remove JWT from storage (adjust key if needed)
+		localStorage.removeItem('jwt');
+		// Clear auth store
+		authStore.clearUser();
+		// Redirect to login
 		goto('/login');
 	}
 

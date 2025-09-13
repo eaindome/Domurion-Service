@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import Toast from '$lib/components/Toast.svelte';
 	import { onMount } from 'svelte';
+	import { authStore } from '$lib/stores/authStore';
 
 	// --- Auto-lock vault global logic ---
 
@@ -58,6 +59,9 @@
 	}
 
 	onMount(() => {
+		// Hydrate auth state from cookie/session on app load
+		authStore.hydrateAuth();
+
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
 		if (autoLockValue) {

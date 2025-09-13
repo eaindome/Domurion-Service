@@ -72,22 +72,5 @@ export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { i
     }
 }
 
-export async function logout(): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    });
-    if (response.ok) {
-        return { success: true };
-    } else {
-        let errorMsg = 'Unknown error';
-        try {
-            const data = await response.json();
-            errorMsg = data.message || errorMsg;
-        } catch (err) {
-            console.log(`Error logging out: ${err}`);
-        }
-        return { success: false, message: errorMsg };
-    }
-}
+
 

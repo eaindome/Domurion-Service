@@ -20,8 +20,25 @@ const initialState: AuthState = {
 	error: null
 };
 
+import { fetchCurrentUser } from '$lib/api/auth';
+
 function createAuthStore() {
 	const { subscribe, set, update } = writable<AuthState>(initialState);
+
+	async function hydrateAuth() {
+		update((state) => ({ ...state, loading: true }));
+		try {
+			const res = await fetchCurrentUser();
+			if (res.success && res.user) {
+				set({ user: res.user, isAuthenticated: true, loading: false, error: null });
+			} else {
+				set(initialState);
+			}
+		} catch (err) {
+			console.log(`Error hydrating auth: ${err}`);
+			set(initialState);
+		}
+	}
 
 	return {
 		subscribe,
@@ -30,7 +47,8 @@ function createAuthStore() {
 		clearUser: () => set(initialState),
 		setLoading: (loading: boolean) => update((state) => ({ ...state, loading })),
 		setError: (error: string | null) => update((state) => ({ ...state, error, loading: false })),
-		logout: () => set(initialState)
+		logout: () => set(initialState),
+		hydrateAuth
 	};
 }
 
