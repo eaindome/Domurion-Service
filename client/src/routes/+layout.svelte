@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/favIcon.png';
 	import Toast from '$lib/components/Toast.svelte';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/authStore';
@@ -103,7 +103,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" href={favicon} class="w-20 h-20"/>
 </svelte:head>
 
 <!-- {#if $isVaultLocked} -->
