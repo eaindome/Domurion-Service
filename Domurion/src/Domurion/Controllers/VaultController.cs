@@ -1,5 +1,6 @@
 using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Domurion.Dtos;
 
 namespace Domurion.Controllers
@@ -11,6 +12,7 @@ namespace Domurion.Controllers
         private readonly IPasswordVaultService _passwordVaultService = passwordVaultService;
 
         [HttpPost("add")]
+        [Authorize]
         public IActionResult Add(Guid userId, string site, string username, string password)
         {
             try
@@ -26,6 +28,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("list")]
+        [Authorize]
         public IActionResult List(Guid userId)
         {
             var credentials = _passwordVaultService.GetCredentials(userId)
@@ -34,6 +37,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("retrieve")]
+        [Authorize]
         public IActionResult Retrieve(Guid credentialId, Guid userId)
         {
             try
@@ -49,6 +53,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPut("update")]
+        [Authorize]
         public IActionResult Update(Guid credentialId, Guid userId, string? site, string? username, string? password)
         {
             try
@@ -72,6 +77,7 @@ namespace Domurion.Controllers
         }
 
         [HttpDelete("delete")]
+        [Authorize]
         public IActionResult Delete(Guid credentialId, Guid userId)
         {
             try
@@ -87,6 +93,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("share")]
+        [Authorize]
         public IActionResult Share(Guid credentialId, Guid fromUserId, string toUsername)
         {
             try
@@ -110,6 +117,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("export")]
+        [Authorize]
         public IActionResult Export(Guid userId)
         {
             var credentials = _passwordVaultService.GetCredentials(userId)
@@ -124,6 +132,7 @@ namespace Domurion.Controllers
 
 
         [HttpPost("import")]
+        [Authorize]
         public IActionResult Import(Guid userId, [FromBody] List<ImportCredentialDto> credentials)
         {
             var imported = new List<object>();

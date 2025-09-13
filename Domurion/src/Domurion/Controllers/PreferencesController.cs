@@ -1,7 +1,6 @@
 using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Domurion.Services;
 using Domurion.Models;
 using System.Security.Claims;
 
@@ -15,6 +14,7 @@ namespace Domurion.Controllers
         private readonly IPreferencesService _preferencesService = preferencesService;
 
         [HttpGet]
+        [Authorize]
         public ActionResult<UserPreferences> Get()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -24,6 +24,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPut]
+        [Authorize]
         public ActionResult<UserPreferences> Update([FromBody] UserPreferences updated)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -33,6 +34,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("generate-password")]
+        [Authorize]
         public ActionResult<string> GeneratePassword(
             [FromQuery] int? length,
             [FromQuery] bool? useUppercase,

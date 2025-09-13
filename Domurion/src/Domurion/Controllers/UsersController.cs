@@ -116,6 +116,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPut("update")]
+        [Authorize]
         public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
         {
             try
@@ -141,6 +142,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("generate-password")]
+        [Authorize]
         public IActionResult GeneratePassword([FromQuery] int length = 16)
         {
             var password = Helper.GeneratePassword(length);
@@ -148,6 +150,7 @@ namespace Domurion.Controllers
         }
 
         [HttpDelete("delete")]
+        [Authorize]
         public IActionResult Delete(Guid userId)
         {
             try
@@ -185,6 +188,29 @@ namespace Domurion.Controllers
             if (!result)
                 return BadRequest("No Google account to unlink.");
             return Ok("Google account unlinked successfully.");
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public IActionResult GetCurrentUser()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = _userService.GetById(Guid.Parse(userId));
+            if (user == null)
+                return NotFound();
+
+            return Ok(new
+            {
+                user.Id,
+                user.Username,
+                user.Name,
+                user.AuthProvider,
+                user.GoogleId,
+                user.TwoFactorEnabled
+            });
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Domurion.Controllers
         private readonly DataContext _context = context;
 
         [HttpPost("enable")]
+        [Authorize]
         public IActionResult Enable2FA()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -48,6 +49,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("verify")]
+        [Authorize]
         public IActionResult Verify2FA([FromBody] string code)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -71,6 +73,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("disable")]
+        [Authorize]
         public IActionResult Disable2FA([FromBody] string code)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -97,6 +100,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("generate-recovery-codes")]
+        [Authorize]
         public IActionResult GenerateRecoveryCodes()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -118,6 +122,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("use-recovery-code")]
+        [Authorize]
         public IActionResult UseRecoveryCode([FromBody] string code)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -144,6 +149,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("status")]
+        [Authorize]
         public IActionResult Get2FAStatus()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -154,6 +160,7 @@ namespace Domurion.Controllers
         }
 
         [HttpGet("recovery-codes")]
+        [Authorize]
         public IActionResult GetRecoveryCodes()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -167,6 +174,7 @@ namespace Domurion.Controllers
         }
 
         [HttpPost("regenerate-recovery-codes")]
+        [Authorize]
         public IActionResult RegenerateRecoveryCodes([FromBody] string code)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

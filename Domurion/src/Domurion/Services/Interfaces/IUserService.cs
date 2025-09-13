@@ -9,6 +9,7 @@ namespace Domurion.Services.Interfaces
         User? GetByUsername(string username);
         User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null);
         void DeleteUser(Guid userId);
+        User? GetById(Guid userId);
 
         // Create user for external auth (Google)
         User CreateExternalUser(string email, string? name, string provider);
