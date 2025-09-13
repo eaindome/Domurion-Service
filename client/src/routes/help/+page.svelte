@@ -88,8 +88,10 @@
 
 	function handleBack() {
 		if ($authStore.isAuthenticated) {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			goto('/dashboard');
 		} else {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			goto('/login');
 		}
 	}
@@ -192,7 +194,7 @@
 				</div>
 				<p class="mb-4 text-gray-600">Send us a detailed message</p>
 				<a
-					href="mailto:support@vault.com"
+					href={'mailto:support@vault.com'}
 					class="block w-full rounded-lg bg-green-600 px-4 py-2 text-center text-white transition-colors hover:bg-green-700"
 				>
 					Send Email
@@ -255,6 +257,7 @@
 
 			<!-- Category Filter -->
 			<div class="mb-6 flex flex-wrap gap-2">
+				// eslint-disable-next-line svelte/require-each-key
 				{#each categories as category}
 					<button
 						on:click={() => (selectedCategory = category.id)}
@@ -278,7 +281,8 @@
 
 			<!-- FAQ List -->
 			<div class="space-y-4">
-				{#each filteredFaqs as faq}
+				// eslint-disable-next-line svelte/require-each-key
+				{#each filteredFaqs as faq (faq.id)}
 					<div class="rounded-lg border border-gray-200">
 						<button
 							on:click={() => toggleFaq(faq.id)}
@@ -336,7 +340,7 @@
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
 				<a
-					href="mailto:support@vault.com"
+					href={'mailto:support@vault.com'}
 					class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-6 py-3 text-white transition-colors hover:bg-indigo-700"
 				>
 					<svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

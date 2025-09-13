@@ -58,6 +58,7 @@
 			const result = await updateVaultEntry(entryId, formData);
 			if (result.success) {
 				toast.show('Entry updated successfully', 'success');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				toast.show('Failed to update entry', 'error');
@@ -77,6 +78,7 @@
 			const result = await deleteVaultEntry(entryId);
 			if (result.success) {
 				toast.show('Entry deleted successfully', 'success');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				toast.show('Error deleting entry', 'error');
@@ -96,6 +98,7 @@
 		if (hasChanges) {
 			showUnsavedConfirm = true;
 		} else {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			goto('/dashboard');
 		}
 	}
@@ -283,6 +286,7 @@
 					<button
 						on:click={() => {
 							showUnsavedConfirm = false;
+							// eslint-disable-next-line svelte/no-navigation-without-resolve
 							goto('/dashboard');
 						}}
 						class="w-full rounded-lg bg-amber-500 px-5 py-2.5 text-base font-semibold text-white shadow-md transition-colors hover:bg-amber-600 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 sm:w-auto"

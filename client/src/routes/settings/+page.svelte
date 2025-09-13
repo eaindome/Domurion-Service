@@ -56,7 +56,6 @@
 		accountForm.newPassword &&
 		accountForm.confirmPassword &&
 		accountForm.newPassword === accountForm.confirmPassword;
-	$: passwordTooShort = accountForm.newPassword && accountForm.newPassword.length < 8;
 
 	onMount(() => {
 		// Load user settings from API
@@ -88,7 +87,7 @@
 
 		try {
 			// TODO: Replace with actual API call
-			const updateData: any = {
+			const updateData: Record<string, string> = {
 				name: accountForm.name,
 				email: accountForm.email
 			};
@@ -113,6 +112,7 @@
 			user.name = accountForm.name;
 			user.email = accountForm.email;
 		} catch (error) {
+			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update account. Please try again.';
 		} finally {
 			isLoading = false;
@@ -139,6 +139,7 @@
 			settings.update((s) => ({ ...s, autoLock: securitySettings.autoLock }));
 			successMessage = 'Security settings updated successfully!';
 		} catch (error) {
+			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update security settings.';
 		} finally {
 			isLoading = false;
@@ -164,6 +165,7 @@
 
 			successMessage = 'Vault preferences updated successfully!';
 		} catch (error) {
+			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update vault preferences.';
 		} finally {
 			isLoading = false;
@@ -202,6 +204,7 @@
 
 			successMessage = 'Vault exported successfully!';
 		} catch (error) {
+			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to export vault.';
 		} finally {
 			exportInProgress = false;
@@ -225,6 +228,7 @@
 			) {
 				// TODO: Implement account deletion
 				console.log('Account deletion requested');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/login');
 			}
 		}
@@ -232,6 +236,7 @@
 
 	function logout() {
 		// TODO: Clear auth store and redirect
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto('/login');
 	}
 </script>

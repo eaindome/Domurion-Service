@@ -43,12 +43,6 @@
 		return Math.min(score, 100);
 	}
 
-	function getPasswordStrengthColor(): string {
-		if (passwordStrength < 40) return 'bg-red-500';
-		if (passwordStrength < 70) return 'bg-yellow-500';
-		return 'bg-green-500';
-	}
-
 	function getPasswordStrengthText(strength: number): string {
 		if (strength < 40) return 'Weak';
 		if (strength < 70) return 'Medium';

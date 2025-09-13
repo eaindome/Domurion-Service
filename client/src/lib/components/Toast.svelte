@@ -3,12 +3,12 @@
 	import { fly } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 
-	let isVisible = false;
+	// let isVisible = false;
 
-	// Enhanced animation timing
-	$: if ($toast) {
-		isVisible = true;
-	}
+	// // Enhanced animation timing
+	// $: if ($toast) {
+	// 	isVisible = true;
+	// }
 
 	function getToastStyles(type: string | undefined) {
 		const baseClasses = 'backdrop-blur-sm border-2';

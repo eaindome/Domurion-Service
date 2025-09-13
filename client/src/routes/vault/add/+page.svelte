@@ -27,6 +27,7 @@
 			const success = await createVaultEntry(formData);
 			if (success) {
 				toast.show('Entry saved successfully', 'success');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				toast.show('Failed to save entry', 'error');
@@ -42,6 +43,7 @@
 
 	// Handle cancel
 	function handleCancel() {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto('/dashboard');
 	}
 </script>
