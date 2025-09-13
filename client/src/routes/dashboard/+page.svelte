@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
+	import navLogo from '$lib/assets/navLogo.png';
 
 	import VaultItemRow from '$lib/components/VaultItemRow.svelte';
 	import type { VaultItem } from '$lib/types';
@@ -143,17 +144,9 @@
 			<div class="flex h-16 items-center justify-between">
 				<!-- Logo and Brand -->
 				<div class="flex items-center">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shadow-sm">
-						<svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-							/>
-						</svg>
+					<div class="flex items-center justify-center h-16">
+						<img src={navLogo} alt="Domurion Logo" class="max-h-36 max-w-36 rounded-lg" />
 					</div>
-					<span class="ml-3 text-xl font-semibold text-gray-900">Vault</span>
 				</div>
 
 				<!-- User Menu -->
@@ -354,9 +347,6 @@
 					<h1 class="text-3xl font-semibold text-gray-900">Your Vault</h1>
 					<p class="mt-2 text-gray-600">Manage your passwords and credentials securely</p>
 				</div>
-
-				// eslint-disable-next-line svelte/no-navigation-without-resolve,
-				svelte/no-useless-mustaches
 				<a
 					href={'/vault/add'}
 					class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"

@@ -1,6 +1,7 @@
 <script lang="ts">
 	// eslint-disable-next-line svelte/no-navigation-without-resolve, svelte/no-useless-mustaches
 	import { goto } from '$app/navigation';
+	import navLogo from '$lib/assets/logo.png';
 
 	let email = '';
 	let password = '';
@@ -89,16 +90,11 @@
 	<!-- Header -->
 	<div class="sm:mx-auto sm:w-full sm:max-w-md">
 		<div class="flex justify-center">
-			<!-- Logo placeholder - you can replace this with your actual logo -->
-			<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600">
-				<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-					/>
-				</svg>
+			<!-- Logo and Brand -->
+			<div class="flex items-center">
+				<div class="flex items-center justify-center h-16">
+					<img src={navLogo} alt="Domurion Logo" class="max-h-64 max-w-64 rounded-lg mr-8 mt-4" />
+				</div>
 			</div>
 		</div>
 		<h2 class="mt-6 text-center text-3xl font-semibold text-gray-900">Create your account</h2>

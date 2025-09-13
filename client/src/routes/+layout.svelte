@@ -10,7 +10,7 @@
 	import { settings } from '$lib/stores/settings';
 	const isVaultLocked = writable(false);
 	let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
-	const AUTO_LOCK_IDLE_MINUTES = 5; // Can be made user-configurable
+	const AUTO_LOCK_IDLE_MINUTES = 10; // Can be made user-configurable
 
 	function resetAutoLockTimer() {
 		let autoLockValue;
@@ -60,11 +60,11 @@
 	onMount(() => {
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
-		if (autoLockValue) {
-			console.log('Auto-lock enabled');
-			setupAutoLockListeners();
-			resetAutoLockTimer();
-		}
+		// if (autoLockValue) {
+		// 	console.log('Auto-lock enabled');
+		// 	setupAutoLockListeners();
+		// 	resetAutoLockTimer();
+		// }
 		unsubscribe();
 		// Listen for changes to autoLock and update listeners/timer accordingly
 		const unsubSettings = settings.subscribe((s) => {
