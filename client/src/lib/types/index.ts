@@ -33,3 +33,9 @@ export interface VaultItem {
 	createdAt: string;
 	updatedAt: string;
 }
+
+export type UserSettings = {
+	theme: string;
+	language: string;
+	notificationsEnabled: boolean;
+};
