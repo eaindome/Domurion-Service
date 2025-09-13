@@ -10,7 +10,7 @@
 	import { settings } from '$lib/stores/settings';
 	const isVaultLocked = writable(false);
 	let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
-	const AUTO_LOCK_IDLE_MINUTES = 2; // Can be made user-configurable
+	const AUTO_LOCK_IDLE_MINUTES = 5; // Can be made user-configurable
 
 	function resetAutoLockTimer() {
 		let autoLockValue;
