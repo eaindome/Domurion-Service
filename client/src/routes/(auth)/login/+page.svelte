@@ -4,6 +4,7 @@
 	import navLogo from '$lib/assets/logo.png';
 	import { login, signInWithGoogle } from '$lib/api/auth';
 	import { toast } from '$lib/stores/toast';
+	import { authStore } from '$lib/stores/authStore';
 
 
 	let email = '';
@@ -16,21 +17,26 @@
 		event.preventDefault();
 		isLoading = true;
 		error = '';
+		authStore.setLoading(true);
 
 		try {
 			const response = await login(email, password);
-			if (response.success) {
+			if (response.success && response.user) {
+				authStore.setUser(response.user);
 				toast.show('Login successful', 'success');
 				await new Promise(res => setTimeout(res, 2000));
 				goto('/dashboard');
 			} else {
 				error = response.message || 'Login failed';
+				authStore.setError(error);
 			}
 		} catch (err) {
 			console.log(`Error: ${err}`);
 			error = 'Something went wrong. Please try again.';
+			authStore.setError(error);
 		} finally {
 			isLoading = false;
+			authStore.setLoading(false);
 		}
 	}
 </script>

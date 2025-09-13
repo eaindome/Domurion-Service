@@ -3,16 +3,23 @@ export function signInWithGoogle() {
     window.location.href = '/api/auth/google-login?returnUrl=' + encodeURIComponent(window.location.origin + '/dashboard');
 }
 
-export async function login(email: string, password: string): Promise<{ success: boolean; message?: string }> {
+export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string }; message?: string }> {
     const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
     });
     if (response.ok) {
-        return { success: true };
-    }
-    else {
+        try {
+            const data = await response.json();
+            // Expecting backend to return { user: { id, email, name? } }
+            return { success: true, user: data.user };
+        } catch (err) {
+            console.log(`Error parsing login response: ${err}`);
+            // Fallback: treat as success but no user info
+            return { success: true };
+        }
+    } else {
         let errorMsg = 'Unknown error';
         try {
             const data = await response.json();
