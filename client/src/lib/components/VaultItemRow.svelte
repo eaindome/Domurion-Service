@@ -12,11 +12,62 @@
 	// Password strength indicator state
 	let passwordStrength = { color: 'gray', text: 'Unknown' };
 
-	// Show/hide password in modal
+
+	// Show/hide password in modal (only after 2FA)
 	let showPassword = false;
+
+
+	// 2FA modal state
+	let show2FAModal = false;
+	let twoFACodeDigits = ['', '', '', '', '', ''];
+	let twoFAError = '';
+	let verifying2FA = false;
+	let codeInputs: Array<HTMLInputElement | null> = [null, null, null, null, null, null];
+
+	function assignCodeInput(idx: number) {
+		return (el: HTMLInputElement | null) => {
+			codeInputs[idx] = el;
+		};
+	}
+
+	function handle2FADigitInput(e: Event, idx: number) {
+		const input = e.target as HTMLInputElement;
+		let val = input.value.replace(/\D/g, '');
+		if (val.length > 1) val = val.slice(-1); // Only last digit
+		twoFACodeDigits[idx] = val;
+		if (val && idx < 5) {
+			codeInputs[idx + 1]?.focus();
+		}
+		// If user pasted all at once
+		if (val.length === 6 && idx === 0) {
+			for (let i = 0; i < 6; i++) {
+				twoFACodeDigits[i] = val[i] || '';
+				if (val[i] && codeInputs[i]) codeInputs[i]!.value = val[i];
+			}
+			codeInputs[5]?.focus();
+		}
+	}
+
+	function handle2FADigitKeydown(e: KeyboardEvent, idx: number) {
+		const input = e.target as HTMLInputElement;
+		if (e.key === 'Backspace') {
+			if (!input.value && idx > 0) {
+				codeInputs[idx - 1]?.focus();
+			}
+		} else if (e.key === 'ArrowLeft' && idx > 0) {
+			codeInputs[idx - 1]?.focus();
+		} else if (e.key === 'ArrowRight' && idx < 5) {
+			codeInputs[idx + 1]?.focus();
+		}
+	}
+
+	function getTwoFACode() {
+		return twoFACodeDigits.join('');
+	}
 
 	// Track which field was copied
 	let copiedField: string | null = null;
+
 
 	// Compute password strength
 	function getPasswordStrength(password: string) {
@@ -31,6 +82,12 @@
 		if (score >= 3) return { color: 'blue', text: 'Medium' };
 		if (score >= 2) return { color: 'yellow', text: 'Weak' };
 		return { color: 'red', text: 'Very Weak' };
+	}
+
+	// Mock 2FA verification (replace with real API call)
+	async function verify2FACode(code: string): Promise<boolean> {
+		await new Promise((r) => setTimeout(r, 600));
+		return code === '123456';
 	}
 
 	$: passwordStrength = getPasswordStrength(item?.password);
@@ -391,8 +448,17 @@
 									on:click={() => copyToClipboard(item.password, 'password')}
 								/>
 								<button
-									on:click={() => (showPassword = !showPassword)}
+									on:click={() => {
+										if (!showPassword) {
+											show2FAModal = true;
+											twoFACodeDigits = ['', '', '', '', '', ''];
+											twoFAError = '';
+										} else {
+											showPassword = false;
+										}
+									}}
 									class="absolute top-1/2 right-3 -translate-y-1/2 transform p-1 text-gray-400 transition-colors hover:text-gray-600"
+									aria-label={showPassword ? 'Hide password' : 'Show password'}
 								>
 									{#if showPassword}
 										<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,6 +486,71 @@
 										</svg>
 									{/if}
 								</button>
+								{#if show2FAModal}
+									<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+										<!-- Backdrop -->
+										<div
+											class="animate-fade-in absolute inset-0 bg-black/50 backdrop-blur-sm"
+											role="button"
+											tabindex="0"
+											aria-label="Close 2FA modal"
+											on:click={() => { show2FAModal = false; twoFACodeDigits = ['', '', '', '', '', '']; twoFAError = ''; }}
+											on:keydown={(e) => e.key === 'Escape' && (show2FAModal = false)}
+										></div>
+										<!-- Modal Content -->
+										<form
+											class="animate-modal-enter relative w-full max-w-xs rounded-2xl border border-gray-100 bg-white shadow-2xl p-8"
+											on:submit|preventDefault={async () => {
+												verifying2FA = true;
+												twoFAError = '';
+												const code = getTwoFACode();
+												const ok = await verify2FACode(code);
+												verifying2FA = false;
+												if (ok) {
+													show2FAModal = false;
+													showPassword = true;
+													twoFACodeDigits = ['', '', '', '', '', ''];
+												} else {
+													twoFAError = 'Invalid code. Please try again.';
+												}
+											}}
+										>
+											<h3 class="mb-4 text-lg font-semibold text-gray-900 text-center">Enter 2FA Code</h3>
+											<div class="mb-2 flex justify-center space-x-2">
+												{#each [0,1,2,3,4,5] as idx}
+													<input
+														type="text"
+														inputmode="numeric"
+														maxlength="1"
+														class="w-10 h-12 rounded-lg border border-gray-200 text-center text-xl font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+														bind:this={codeInputs[idx]}
+														bind:value={twoFACodeDigits[idx]}
+														on:input={(e) => handle2FADigitInput(e, idx)}
+														on:keydown={(e) => handle2FADigitKeydown(e, idx)}
+														autocomplete={idx === 0 ? 'one-time-code' : 'off'}
+													/>
+												{/each}
+											</div>
+											{#if twoFAError}
+												<div class="mb-2 text-sm text-red-600 text-center">{twoFAError}</div>
+											{/if}
+											<button
+												type="submit"
+												class="mt-2 w-full rounded-lg bg-indigo-600 px-4 py-2 text-white font-semibold transition-colors hover:bg-indigo-700 disabled:opacity-60"
+												disabled={verifying2FA || getTwoFACode().length !== 6 || twoFACodeDigits.some(d => d === '')}
+											>
+												{verifying2FA ? 'Verifying...' : 'Verify & Reveal'}
+											</button>
+											<button
+												type="button"
+												class="mt-3 w-full rounded-lg bg-gray-100 px-4 py-2 text-gray-700 font-medium hover:bg-gray-200"
+												on:click={() => { show2FAModal = false; twoFACodeDigits = ['', '', '', '', '', '']; twoFAError = ''; }}
+											>
+												Cancel
+											</button>
+										</form>
+									</div>
+								{/if}
 							</div>
 						</div>
 
