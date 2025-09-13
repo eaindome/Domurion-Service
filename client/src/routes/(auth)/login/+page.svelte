@@ -51,18 +51,12 @@
 			</div>
 		</div>
 		<h2 class="mt-3 text-center text-2xl font-semibold text-gray-900">Sign in to your account</h2>
-		<p class="mt-2 text-center text-sm text-gray-600">
-			Or <a
-				href={'/register'}
-				class="font-medium text-indigo-600 transition-colors hover:text-indigo-500"
-				>create a new account</a
-			>
-		</p>
+		
 	</div>
 
 	<!-- Login Form -->
 	<div class="mt-5 sm:mx-auto sm:w-full sm:max-w-md">
-		<form class="space-y-6 rounded-2xl border border-gray-100 bg-white px-6 py-8 shadow-sm sm:px-10" on:submit={handleLogin}>
+		<form class="space-y-4 rounded-2xl border border-gray-100 bg-white px-6 py-8 shadow-sm sm:px-10" on:submit={handleLogin}>
 			<!-- Error Message -->
 			{#if error}
 				<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -162,7 +156,7 @@
 							Signing in...
 						</span>
 					{:else}
-						<span class="flex items-center justify-center text-white text-lg font-semibold">
+						<span class="flex items-center justify-center text-white text-md font-semibold">
 							Sign in
 						</span>
 					{/if}
@@ -195,6 +189,13 @@
 					</button>
 				</div>
 			</div>
+			<p class="mt-2 text-center text-sm text-gray-600">
+				New here? <a
+					href={'/register'}
+					class="font-medium text-indigo-600 transition-colors hover:text-indigo-500"
+					>Create an account</a
+				>
+			</p>
 		</form>
 	</div>
 </div>
