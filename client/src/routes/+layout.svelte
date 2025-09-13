@@ -15,15 +15,15 @@
 	function resetAutoLockTimer() {
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
-		if (!autoLockValue) {
-			unsubscribe();
-			return;
-		}
+		// if (!autoLockValue) {
+		// 	unsubscribe();
+		// 	return;
+		// }
 		if (autoLockTimer) clearTimeout(autoLockTimer);
 		autoLockTimer = setTimeout(
 			() => {
 				console.log('Auto-lock timer triggered');
-				isVaultLocked.set(true);
+				isVaultLocked.set(false);
 			},
 			AUTO_LOCK_IDLE_MINUTES * 60 * 1000
 		);
@@ -31,7 +31,7 @@
 	}
 
 	function unlockVault() {
-		isVaultLocked.set(false);
+		isVaultLocked.set(true);
 		resetAutoLockTimer();
 	}
 
@@ -60,11 +60,11 @@
 	onMount(() => {
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
-		// if (autoLockValue) {
-		// 	console.log('Auto-lock enabled');
-		// 	setupAutoLockListeners();
-		// 	resetAutoLockTimer();
-		// }
+		if (autoLockValue) {
+			console.log('Auto-lock enabled');
+			setupAutoLockListeners();
+			resetAutoLockTimer();
+		}
 		unsubscribe();
 		// Listen for changes to autoLock and update listeners/timer accordingly
 		const unsubSettings = settings.subscribe((s) => {
@@ -91,9 +91,9 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{#if $isVaultLocked}
+<!-- {#if $isVaultLocked} -->
 	<!-- Vault Lock Screen Modal (global) -->
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+	<!-- <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 		<div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 		<div
 			class="animate-modal-enter relative flex w-full max-w-md flex-col items-center rounded-3xl border border-white/30 bg-white/80 p-8 shadow-2xl backdrop-blur-xl"
@@ -123,8 +123,8 @@
 				Unlock Vault
 			</button>
 		</div>
-	</div>
-{/if}
+	</div> -->
+<!-- {/if} -->
 
 <Toast />
 <div aria-hidden={$isVaultLocked}>

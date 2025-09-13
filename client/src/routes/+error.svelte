@@ -3,6 +3,7 @@
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import navLogo from '$lib/assets/navLogo.png';
 
 	// Get error details from the page store
 	$: status = $page.status;
@@ -151,22 +152,11 @@
 	<!-- Simple Header -->
 	<nav class="border-b border-gray-100 bg-white shadow-sm">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<div class="flex h-16 items-center">
-				// eslint-disable-next-line svelte/no-navigation-without-resolve,
-				svelte/no-useless-mustaches
-				<a href={'/'} class="flex items-center">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-						<svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-							/>
-						</svg>
-					</div>
-					<span class="ml-3 text-xl font-semibold text-gray-900">Vault</span>
-				</a>
+			<!-- Logo and Brand -->
+			<div class="flex items-center">
+				<div class="flex items-center justify-center h-16">
+					<img src={navLogo} alt="Domurion Logo" class="max-h-36 max-w-36 rounded-lg" />
+				</div>
 			</div>
 		</div>
 	</nav>
