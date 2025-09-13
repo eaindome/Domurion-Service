@@ -281,7 +281,7 @@
 				<!-- Logo and Brand -->
 				<div class="flex items-center">
 					<div class="flex items-center justify-center h-16">
-						<img src={navLogo} alt="Domurion Logo" class="max-h-36 max-w-36 rounded-lg" />
+						<img src={navLogo} alt="Domurion Logo" class="max-h-32 max-w-32 rounded-lg" />
 					</div>
 				</div>
 
