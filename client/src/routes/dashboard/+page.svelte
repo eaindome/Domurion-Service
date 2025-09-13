@@ -9,50 +9,16 @@
 	import type { VaultItem } from '$lib/types';
 	// import { maskPassword, getSiteFavicon } from '../../utils/helpers';
 
-	// Mock data - replace with actual API calls
-	let vaultItems: VaultItem[] = [
-		{
-			id: 1,
-			siteName: 'Google',
-			siteUrl: 'google.com',
-			username: 'john.doe@email.com',
-			password: 'MySecurePassword123!',
-			notes: 'Main Google account',
-			createdAt: '2024-01-15',
-			updatedAt: '2024-01-20'
-		},
-		{
-			id: 2,
-			siteName: 'GitHub',
-			siteUrl: 'github.com',
-			username: 'johndoe',
-			password: 'GitHubSecure456@',
-			notes: 'Development account',
-			createdAt: '2024-01-10',
-			updatedAt: '2024-01-18'
-		},
-		{
-			id: 3,
-			siteName: 'Netflix',
-			siteUrl: 'netflix.com',
-			username: 'john.doe@email.com',
-			password: 'Netflix789#',
-			notes: 'Family subscription',
-			createdAt: '2024-01-05',
-			updatedAt: '2024-01-12'
-		}
-	];
+	// Vault items will be loaded from API
+	let vaultItems: VaultItem[] = [];
 
 	let searchQuery = '';
 	let showDeleteModal = false;
 	let itemToDelete: VaultItem | null = null;
 	let isLoading = false;
 
-	// User info - you'll get this from your auth store
-	let user = {
-		email: 'john.doe@email.com',
-		name: 'John Doe'
-	};
+	// User info will be loaded from auth store
+	let user = { email: '', name: '' };
 
 	// User menu dropdown state
 	let showUserMenu = false;
@@ -149,7 +115,7 @@
 				<!-- Logo and Brand -->
 				<div class="flex items-center">
 					<div class="flex items-center justify-center h-16">
-						<img src={navLogo} alt="Domurion Logo" class="max-h-36 max-w-36 rounded-lg" />
+						<img src={navLogo} alt="Domurion Logo" class="max-h-32 max-w-32 rounded-lg" />
 					</div>
 				</div>
 
@@ -448,8 +414,6 @@
 								: 'Start by adding your first password entry'}
 						</p>
 						{#if !searchQuery}
-							// eslint-disable-next-line svelte/no-navigation-without-resolve,
-							svelte/no-useless-mustaches
 							<a
 								href={'/vault/add'}
 								class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"

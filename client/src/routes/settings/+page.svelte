@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import navLogo from '$lib/assets/navLogo.png';
 
 	// User data - you'll get this from your auth store
 	let user = {
@@ -56,7 +57,20 @@
 		accountForm.newPassword &&
 		accountForm.confirmPassword &&
 		accountForm.newPassword === accountForm.confirmPassword;
+	let searchQuery = '';
+	let showDeleteModal = false;
 
+	// User info - you'll get this from your auth store
+	// let user = {
+	// 	email: 'john.doe@email.com',
+	// 	name: 'John Doe'
+	// };
+
+	// User menu dropdown state
+	let showUserMenu = false;
+	function setTimeoutMenuClose() {
+		setTimeout(() => (showUserMenu = false), 120);
+	}
 	onMount(() => {
 		// Load user settings from API
 		loadSettings();
@@ -234,6 +248,20 @@
 		}
 	}
 
+	function handleHelpClick() {
+		showUserMenu = false;
+		console.log('Navigating to help');
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		setTimeout(() => goto('/help'), 10);
+	}
+
+	function handleDashboardClick() {
+		showUserMenu = false;
+		console.log('Navigating to dashboard');
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		setTimeout(() => goto('/dashboard'), 10);
+	}
+
 	function logout() {
 		// TODO: Clear auth store and redirect
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -252,32 +280,92 @@
 			<div class="flex h-16 items-center justify-between">
 				<!-- Logo and Brand -->
 				<div class="flex items-center">
-					<a href="/dashboard" class="flex items-center">
-						<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-							<svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-								/>
-							</svg>
-						</div>
-						<span class="ml-3 text-xl font-semibold text-gray-900">Vault</span>
-					</a>
+					<div class="flex items-center justify-center h-16">
+						<img src={navLogo} alt="Domurion Logo" class="max-h-32 max-w-32 rounded-lg" />
+					</div>
 				</div>
 
 				<!-- User Menu -->
-				<div class="flex items-center space-x-4">
-					<a href="/dashboard" class="text-sm text-gray-600 transition-colors hover:text-gray-900">
-						← Back to Dashboard
-					</a>
-					<button
-						on:click={logout}
-						class="text-sm text-gray-600 transition-colors hover:text-gray-900"
-					>
-						Sign out
-					</button>
+				<div class="flex items-center space-x-6">
+					<!-- User dropdown -->
+					<div class="relative" on:focusout={setTimeoutMenuClose}>
+						<button
+							class="group flex items-center space-x-2 rounded-xl p-1 transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
+							aria-haspopup="true"
+							aria-expanded={showUserMenu}
+							aria-label="User menu"
+							on:click={() => (showUserMenu = !showUserMenu)}
+						>
+							<div class="relative">
+								<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white">
+									<span class="text-sm font-semibold text-white">{user.name.charAt(0)}</span>
+								</div>
+								<div class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"></div>
+							</div>
+							<svg
+								class="h-4 w-4 text-gray-400 transition-all duration-200 group-hover:text-gray-600 {showUserMenu ? 'rotate-180' : 'rotate-0'}"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+							</svg>
+						</button>
+						{#if showUserMenu}
+							<div class="animate-menu-enter absolute right-0 z-50 mt-3 w-56 rounded-2xl border border-gray-200 bg-white py-2 shadow-xl">
+								<div class="border-b border-gray-100 px-4 py-3">
+									<div class="flex items-center space-x-3">
+										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600">
+											<span class="font-semibold text-white">{user.name.charAt(0)}</span>
+										</div>
+										<div class="min-w-0 flex-1">
+											<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
+											<p class="truncate text-xs text-gray-500">{user.email || 'user@example.com'}</p>
+										</div>
+									</div>
+								</div>
+								<div class="py-1">
+									<button
+										type="button"
+										class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-700"
+										on:mousedown={handleDashboardClick}
+									>
+										<svg class="mr-3 h-4 w-4 text-indigo-500 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<rect x="3" y="3" width="7" height="7" rx="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<rect x="14" y="3" width="7" height="7" rx="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<rect x="14" y="14" width="7" height="7" rx="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<rect x="3" y="14" width="7" height="7" rx="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+										Dashboard
+									</button>
+									<button
+										type="button"
+										class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-gray-50"
+										on:mousedown={handleHelpClick}
+									>
+										<svg class="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										Help & Support
+									</button>
+								</div>
+								<div class="my-1 border-t border-gray-100"></div>
+								<button
+									on:click={() => {
+										showUserMenu = false;
+										logout();
+									}}
+									class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-red-50 hover:text-red-600"
+									tabindex="0"
+								>
+									<svg class="mr-3 h-4 w-4 text-red-500 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m10 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h8a3 3 0 013 3v1" />
+									</svg>
+									<span>Sign Out</span>
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>

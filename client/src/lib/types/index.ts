@@ -22,6 +22,12 @@ export type VaultEntry = {
 	[key: string]: string | undefined | unknown;
 };
 
+export type UserSettings = {
+	theme: string;
+	language: string;
+	notificationsEnabled: boolean;
+};
+
 // Dashboard vault item type
 export interface VaultItem {
 	id: number;
@@ -32,4 +38,14 @@ export interface VaultItem {
 	notes?: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+// Define a type for support requests
+export interface SupportRequest {
+	id: string;
+	username?: string;
+	email?: string;
+	reason?: string;
+	status: string;
+	createdAt: string;
 }
