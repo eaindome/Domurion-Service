@@ -2,6 +2,7 @@ using Domurion.Models;
 using Domurion.Helpers;
 using Domurion.Data;
 using Domurion.Services.Interfaces;
+using System.Linq;
 
 namespace Domurion.Services
 {
@@ -9,6 +10,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
+        #region Credntial Management
         public Credential AddCredential(Guid userId, string site, string username, string password, string? notes = null, string? ipAddress = null)
         {
             if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -106,7 +108,9 @@ namespace Domurion.Services
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
             AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "DeleteCredential", ipAddress, credential.Site);
         }
+        #endregion
 
+        #region Credential Sharing
         // Share a credential with another user by username
         public Credential ShareCredential(Guid credentialId, Guid fromUserId, string toUsername, string? ipAddress = null)
         {
@@ -138,5 +142,110 @@ namespace Domurion.Services
 
             return newCredential;
         }
+        
+        // Create a share invitation
+        public SharedCredentialInvitation CreateShareInvitation(Guid credentialId, Guid fromUserId, string toIdentifier, DataContext context)
+        {
+            // Try username first, then email
+            var toUser = (context.Users.FirstOrDefault(u => u.Username == toIdentifier)
+                    ?? context.Users.FirstOrDefault(u => u.Email == toIdentifier)) ?? throw new ArgumentException("Recipient not found by username or email.");
+            var invitation = new SharedCredentialInvitation
+            {
+                CredentialId = credentialId,
+                FromUserId = fromUserId,
+                ToUserId = toUser.Id,
+                ToEmail = toUser.Email,
+                CreatedAt = DateTime.UtcNow,
+                Accepted = false,
+                Rejected = false
+            };
+            context.SharedCredentialInvitations.Add(invitation);
+            context.SaveChanges();
+            // (Optional) Send notification/email here
+            return invitation;
+        }
+
+        // Accept a share invitation
+        public Credential AcceptShareInvitation(Guid invitationId, Guid recipientUserId, DataContext context)
+        {
+            var invitation = context.SharedCredentialInvitations.FirstOrDefault(i => i.Id == invitationId && i.ToUserId == recipientUserId);
+            if (invitation == null || invitation.Accepted || invitation.Rejected)
+                throw new InvalidOperationException("Invalid or already processed invitation.");
+
+            var original = context.Credentials.FirstOrDefault(c => c.Id == invitation.CredentialId);
+            if (original == null)
+                throw new KeyNotFoundException("Original credential not found.");
+
+            // Duplicate credential for recipient
+            var newCredential = new Credential
+            {
+                UserId = recipientUserId,
+                Site = original.Site,
+                Username = original.Username,
+                EncryptedPassword = original.EncryptedPassword,
+                IntegrityHash = original.IntegrityHash,
+                Notes = original.Notes,
+                IsShared = true,
+                SharedFromUserId = invitation.FromUserId,
+                SharedAt = DateTime.UtcNow
+            };
+            context.Credentials.Add(newCredential);
+
+            invitation.Accepted = true;
+            invitation.RespondedAt = DateTime.UtcNow;
+            context.SaveChanges();
+            return newCredential;
+        }
+
+        // Reject a share invitation
+        public void RejectShareInvitation(Guid invitationId, Guid recipientUserId, DataContext context)
+        {
+            var invitation = context.SharedCredentialInvitations.FirstOrDefault(i => i.Id == invitationId && i.ToUserId == recipientUserId);
+            if (invitation == null || invitation.Accepted || invitation.Rejected)
+                throw new InvalidOperationException("Invalid or already processed invitation.");
+
+            invitation.Rejected = true;
+            invitation.RespondedAt = DateTime.UtcNow;
+            context.SaveChanges();
+        }
+
+        // List shared credentials (pending and accepted)
+        public IEnumerable<object> ListSharedCredentials(Guid userId, DataContext context)
+        {
+            // Accepted: credentials duplicated for user
+            var accepted = context.Credentials
+                .Where(c => c.UserId == userId && c.IsShared)
+                .Select(c => new {
+                    Id = c.Id,
+                    Site = c.Site,
+                    Username = c.Username,
+                    Notes = c.Notes,
+                    SharedFromUserId = c.SharedFromUserId,
+                    SharedAt = c.SharedAt,
+                    Status = "Accepted",
+                    InvitationId = (Guid?)null, // For consistency
+                    CreatedAt = (DateTime?)null // For consistency
+                });
+
+            // Pending: invitations not yet accepted/rejected
+            var pending = context.SharedCredentialInvitations
+                .Where(i => i.ToUserId == userId && !i.Accepted && !i.Rejected)
+                .Join(context.Credentials, i => i.CredentialId, c => c.Id, (i, c) => new {
+                    Id = (Guid?)null, // For consistency
+                    Site = c.Site,
+                    Username = c.Username,
+                    Notes = c.Notes,
+                    SharedFromUserId = (Guid?)i.FromUserId,
+                    SharedAt = (DateTime?)null,
+                    Status = "Pending",
+                    InvitationId = (Guid?)i.Id,
+                    CreatedAt = (DateTime?)i.CreatedAt
+                });
+
+            var acceptedList = accepted.ToList();
+            var pendingList = pending.ToList();
+            return acceptedList.Concat(pendingList).ToList();
+        }
+        #endregion
     }
 }

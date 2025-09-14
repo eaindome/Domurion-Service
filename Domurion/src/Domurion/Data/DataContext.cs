@@ -11,6 +11,7 @@ namespace Domurion.Data
         public DbSet<PasswordHistory> PasswordHistories { get; set; }
         public DbSet<UserPreferences> UserPreferences { get; set; }
         public DbSet<SupportRequest> SupportRequests { get; set; }
+        public DbSet<SharedCredentialInvitation> SharedCredentialInvitations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -150,5 +150,63 @@ namespace Domurion.Controllers
             }
             return Ok(imported);
         }
+
+        [HttpPost("share")]
+        [Authorize]
+        public IActionResult Share(Guid credentialId, string toIdentifier)
+        {
+            var fromUserId = Guid.Parse(User.FindFirst("sub")?.Value ?? throw new UnauthorizedAccessException("User ID not found in token."));
+            try
+            {
+                var invitation = _passwordVaultService.CreateShareInvitation(credentialId, fromUserId, toIdentifier, _context);
+                // (Optional) trigger notification here
+                return Ok(new { invitation.Id, invitation.ToEmail, invitation.CreatedAt });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("shared")]
+        [Authorize]
+        public IActionResult Shared()
+        {
+            var userId = Guid.Parse(User.FindFirst("sub")?.Value ?? throw new UnauthorizedAccessException("User ID not found in token."));
+            var shared = _passwordVaultService.ListSharedCredentials(userId, _context);
+            return Ok(shared);
+        }
+
+        [HttpPost("share/accept")]
+        [Authorize]
+        public IActionResult AcceptShare(Guid invitationId)
+        {
+            var userId = Guid.Parse(User.FindFirst("sub")?.Value ?? throw new UnauthorizedAccessException("User ID not found in token."));
+            try
+            {
+                var credential = _passwordVaultService.AcceptShareInvitation(invitationId, userId, _context);
+                return Ok(new { credential.Id, credential.Site, credential.Username, credential.Notes });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("share/reject")]
+        [Authorize]
+        public IActionResult RejectShare(Guid invitationId)
+        {
+            var userId = Guid.Parse(User.FindFirst("sub")?.Value ?? throw new UnauthorizedAccessException("User ID not found in token."));
+            try
+            {
+                _passwordVaultService.RejectShareInvitation(invitationId, userId, _context);
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

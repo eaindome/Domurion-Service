@@ -35,5 +35,10 @@ namespace Domurion.Models
         public Guid UserId { get; set; }
 
         public string? Notes { get; set; }
+        public Guid? SharedFromUserId { get; set; }
+        public DateTime? SharedAt { get; set; }
+        public bool IsShared { get; set; } = false;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

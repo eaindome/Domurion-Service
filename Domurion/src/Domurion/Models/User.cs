@@ -5,6 +5,12 @@ namespace Domurion.Models
         public Guid Id { get; set; } = Guid.NewGuid();
 
         public string? Name { get; set; }
+        private string _email = string.Empty;
+        public string Email
+        {
+            get => _email;
+            set => _email = value ?? throw new ArgumentNullException(nameof(Email));
+        }
 
         private string _username = string.Empty;
         public string Username
