@@ -60,11 +60,12 @@ export async function retrieveVaultPassword(credentialId: string, userId: string
 }
 
 // Update vault entry
-export async function updateVaultEntry(credentialId: string, userId: string, site?: string, username?: string, password?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+export async function updateVaultEntry(credentialId: string, userId: string, site?: string, username?: string, password?: string, notes?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
 	const params = new URLSearchParams({ credentialId, userId });
 	if (site) params.append('site', site);
 	if (username) params.append('username', username);
 	if (password) params.append('password', password);
+	if (notes) params.append('notes', notes);
 	const response = await fetch(`/api/vault/update?${params.toString()}`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' }

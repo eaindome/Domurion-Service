@@ -1,4 +1,5 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -6,6 +7,17 @@
 	import { deleteVaultEntry, updateVaultEntry, getVaultEntry } from '$lib/api/vault';
 	import { validateVaultEntry } from '$lib/validation/validations';
 	import VaultEntryForm from '$lib/components/VaultEntryForm.svelte';
+	import { authStore } from '../../../../lib/stores/authStore';
+
+	let userId = '';
+	const unsubscribe = authStore.subscribe((state) => {
+		if (state.user) userId = state.user.id;
+	});
+	
+	// Cleanup subscription on component destroy
+	onDestroy(() => {
+		unsubscribe();
+	});
 
 	// Get entry ID from URL params
 	$: entryId = $page.params.id ?? '';
@@ -36,11 +48,11 @@
 				originalData = { ...entry };
 			} else {
 				// Entry not found or error
-				// goto('/dashboard');
+				goto('/dashboard');
 			}
 		} catch (error) {
 			console.error('Error loading entry:', error);
-			// goto('/dashboard');
+			goto('/dashboard');
 		} finally {
 			isLoading = false;
 		}
@@ -55,10 +67,16 @@
 		if (Object.keys(errors).length > 0) return;
 		isSubmitting = true;
 		try {
-			const result = await updateVaultEntry(entryId, formData);
+			const result = await updateVaultEntry(
+				entryId,
+				userId,
+				formData.siteName,
+				formData.username,
+				formData.password,
+				formData.notes
+			);
 			if (result.success) {
 				toast.show('Entry updated successfully', 'success');
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				toast.show('Failed to update entry', 'error');
@@ -75,10 +93,9 @@
 	async function handleDelete() {
 		isDeleting = true;
 		try {
-			const result = await deleteVaultEntry(entryId);
+			const result = await deleteVaultEntry(entryId, userId);
 			if (result.success) {
 				toast.show('Entry deleted successfully', 'success');
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
 				toast.show('Error deleting entry', 'error');
@@ -98,7 +115,6 @@
 		if (hasChanges) {
 			showUnsavedConfirm = true;
 		} else {
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			goto('/dashboard');
 		}
 	}

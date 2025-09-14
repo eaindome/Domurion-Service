@@ -1,4 +1,5 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
@@ -7,7 +8,7 @@
 
 	import VaultItemRow from '$lib/components/VaultItemRow.svelte';
 	import type { VaultItem } from '$lib/types';
-	// import { maskPassword, getSiteFavicon } from '../../utils/helpers';
+	import { listVaultEntries, deleteVaultEntry } from '$lib/api/vault';
 
 	// Vault items will be loaded from API
 	let vaultItems: VaultItem[] = [];
@@ -18,7 +19,7 @@
 	let isLoading = false;
 
 	// User info will be loaded from auth store
-	let user = { email: '', name: '' };
+	let user = { email: '', name: '', id: '' };
 
 	// User menu dropdown state
 	let showUserMenu = false;
@@ -34,19 +35,40 @@
 			item.siteUrl.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
+
 	onMount(async () => {
-		// TODO: Fetch vault items from API
+		// Load user info from authStore (assume it has a subscribe method)
+		const unsubscribe = authStore.subscribe((u) => {
+			if (u) {
+				user = { ...u };
+			}
+		});
 		await loadVaultItems();
+		unsubscribe();
 	});
 
 	async function loadVaultItems() {
 		isLoading = true;
 		try {
-			// TODO: Replace with actual API call
-			// const response = await fetch('/api/vault');
-			// vaultItems = await response.json();
+			if (!user.id) {
+				// Try to get user from authStore if not already set
+				const u = authStore.getUser ? authStore.getUser() : null;
+				if (u && u.id) user = { ...u };
+			}
+			if (!user.id) {
+				toast.show('User not authenticated', 'error');
+				return;
+			}
+			const result = await listVaultEntries(user.id);
+			if (result.success && result.entries) {
+				vaultItems = result.entries;
+			} else {
+				vaultItems = [];
+				toast.show(result.error || 'Failed to load vault items', 'error');
+			}
 		} catch (error) {
 			console.error('Failed to load vault items:', error);
+			toast.show('Failed to load vault items', 'error');
 		} finally {
 			isLoading = false;
 		}
@@ -68,37 +90,37 @@
 		if (!itemToDelete) return;
 
 		try {
-			// TODO: Replace with actual API call
-			// await fetch(`/api/vault/${itemToDelete.id}`, { method: 'DELETE' });
-
-			vaultItems = vaultItems.filter((item) => item.id !== itemToDelete!.id);
+			if (!user.id) {
+				toast.show('User not authenticated', 'error');
+				return;
+			}
+			const result = await deleteVaultEntry(itemToDelete.id, user.id);
+			if (result.success) {
+				vaultItems = vaultItems.filter((item) => item.id !== itemToDelete.id);
+				toast.show('Entry deleted successfully', 'success');
+			} else {
+				toast.show(result.error || 'Failed to delete entry', 'error');
+			}
 			showDeleteModal = false;
 			itemToDelete = null;
 		} catch (error) {
 			console.error('Failed to delete item:', error);
+			toast.show('Failed to delete entry', 'error');
 		}
 	}
 
-	function logout() {
-		// Remove JWT from storage (adjust key if needed)
-		localStorage.removeItem('jwt');
-		// Clear auth store
+	async function logout() {
 		authStore.clearUser();
-		// Redirect to login
 		goto('/login');
 	}
 
 	function handleSettingsClick() {
 		showUserMenu = false;
-		console.log('Navigating to settings');
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		setTimeout(() => goto('/settings'), 10);
 	}
 
 	function handleHelpClick() {
 		showUserMenu = false;
-		console.log('Navigating to help');
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		setTimeout(() => goto('/help'), 10);
 	}
 </script>

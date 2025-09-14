@@ -1,6 +1,8 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	import { goto } from '$app/navigation';
-	import { createVaultEntry } from '$lib/api/vault';
+	import { addVaultEntry } from '$lib/api/vault';
+	import { authStore } from '$lib/stores/authStore';
 	import type { VaultEntryErrors } from '$lib/types';
 	import { validateVaultEntry } from '$lib/validation/validations';
 	import { toast } from '$lib/stores/toast';
@@ -23,15 +25,25 @@
 		errors = validateVaultEntry(formData);
 		if (Object.keys(errors).length > 0) return;
 		isSubmitting = true;
+		let userId: string | undefined;
+		const unsubscribe = authStore.subscribe((state) => {
+			userId = state.user?.id;
+		});
+		unsubscribe();
+		if (!userId) {
+			toast.show('User not authenticated', 'error');
+			isSubmitting = false;
+			return;
+		}
 		try {
-			const success = await createVaultEntry(formData);
-			if (success) {
+			const { siteName, username, password, notes } = formData;
+			const result = await addVaultEntry(userId, siteName, username, password);
+			if (result.success) {
 				toast.show('Entry saved successfully', 'success');
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			} else {
-				toast.show('Failed to save entry', 'error');
-				console.error('Failed to save entry');
+				toast.show(result.error || 'Failed to save entry', 'error');
+				console.error('Failed to save entry', result.error);
 			}
 		} catch (error) {
 			toast.show('An error occurred while saving the entry', 'error');
