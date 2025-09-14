@@ -2,8 +2,8 @@
 import type { VaultEntry } from '$lib/types';
 
 // Add vault entry
-export async function addVaultEntry(userId: string, site: string, username: string, password: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const params = new URLSearchParams({ userId, site, username, password });
+export async function addVaultEntry(userId: string, site: string, username: string, password: string, notes?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const params = new URLSearchParams({ userId, site, username, password, notes: notes || '' });
 	const response = await fetch(`/api/vault/add?${params.toString()}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' }

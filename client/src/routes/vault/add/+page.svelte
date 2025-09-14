@@ -37,7 +37,7 @@
 		}
 		try {
 			const { siteName, username, password, notes } = formData;
-			const result = await addVaultEntry(userId, siteName, username, password);
+			const result = await addVaultEntry(userId, siteName, username, password, notes);
 			if (result.success) {
 				toast.show('Entry saved successfully', 'success');
 				goto('/dashboard');
@@ -55,7 +55,6 @@
 
 	// Handle cancel
 	function handleCancel() {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto('/dashboard');
 	}
 </script>
