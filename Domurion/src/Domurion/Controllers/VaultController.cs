@@ -13,12 +13,12 @@ namespace Domurion.Controllers
 
         [HttpPost("add")]
         [Authorize]
-        public IActionResult Add(Guid userId, string site, string username, string password)
+        public IActionResult Add(Guid userId, string site, string username, string password, string? notes = null)
         {
             try
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-                var credential = _passwordVaultService.AddCredential(userId, site, username, password, ip);
+                var credential = _passwordVaultService.AddCredential(userId, site, username, password, notes, ip);
                 return Ok(new { credential.Id, credential.Site, credential.Username });
             }
             catch (ArgumentException ex)
@@ -54,13 +54,13 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update(Guid credentialId, Guid userId, string? site, string? username, string? password)
+        public IActionResult Update(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null)
         {
             try
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-                var credential = _passwordVaultService.UpdateCredential(credentialId, userId, site, username, password, ip);
-                return Ok(new { credential.Id, credential.Site, credential.Username });
+                var credential = _passwordVaultService.UpdateCredential(credentialId, userId, site, username, password, notes, ip);
+                return Ok(new { credential.Id, credential.Site, credential.Username, credential.Notes });
             }
             catch (KeyNotFoundException ex)
             {

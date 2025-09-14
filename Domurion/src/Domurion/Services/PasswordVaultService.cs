@@ -9,7 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
 
-        public Credential AddCredential(Guid userId, string site, string username, string password, string? ipAddress = null)
+        public Credential AddCredential(Guid userId, string site, string username, string password, string? notes = null, string? ipAddress = null)
         {
             if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 throw new ArgumentException("Site, username, and password are required.");
@@ -28,7 +28,8 @@ namespace Domurion.Services
                 Site = site,
                 Username = username,
                 EncryptedPassword = encryptedPassword,
-                IntegrityHash = integrityHash
+                IntegrityHash = integrityHash,
+                Notes = notes
             };
             _context.Credentials.Add(credential);
             _context.SaveChanges();
@@ -65,7 +66,7 @@ namespace Domurion.Services
             return CryptoHelper.DecryptPassword(credential.EncryptedPassword);
         }
 
-        public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? ipAddress = null)
+        public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null, string? ipAddress = null)
         {
             var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)
                 ?? throw new KeyNotFoundException("Credential not found.");
@@ -85,6 +86,8 @@ namespace Domurion.Services
                     throw new InvalidOperationException("HMAC_KEY environment variable is not set.");
                 credential.IntegrityHash = Helper.ComputeHmac(encryptedPassword, hmacKey);
             }
+            if (notes != null)
+                credential.Notes = notes;
 
             _context.SaveChanges();
             // Audit log

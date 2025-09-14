@@ -33,5 +33,7 @@ namespace Domurion.Models
         }
 
         public Guid UserId { get; set; }
+
+        public string? Notes { get; set; }
     }
 }
