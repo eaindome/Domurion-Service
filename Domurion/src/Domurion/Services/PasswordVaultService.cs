@@ -142,7 +142,7 @@ namespace Domurion.Services
 
             return newCredential;
         }
-        
+
         // Create a share invitation
         public SharedCredentialInvitation CreateShareInvitation(Guid credentialId, Guid fromUserId, string toIdentifier, DataContext context)
         {
@@ -215,7 +215,8 @@ namespace Domurion.Services
             // Accepted: credentials duplicated for user
             var accepted = context.Credentials
                 .Where(c => c.UserId == userId && c.IsShared)
-                .Select(c => new {
+                .Select(c => new
+                {
                     Id = (Guid?)c.Id,
                     Site = c.Site,
                     Username = c.Username,
@@ -230,7 +231,8 @@ namespace Domurion.Services
             // Pending: invitations not yet accepted/rejected
             var pending = context.SharedCredentialInvitations
                 .Where(i => i.ToUserId == userId && !i.Accepted && !i.Rejected)
-                .Join(context.Credentials, i => i.CredentialId, c => c.Id, (i, c) => new {
+                .Join(context.Credentials, i => i.CredentialId, c => c.Id, (i, c) => new
+                {
                     Id = (Guid?)null, // For consistency
                     Site = c.Site,
                     Username = c.Username,
