@@ -216,7 +216,7 @@ namespace Domurion.Services
             var accepted = context.Credentials
                 .Where(c => c.UserId == userId && c.IsShared)
                 .Select(c => new {
-                    Id = c.Id,
+                    Id = (Guid?)c.Id,
                     Site = c.Site,
                     Username = c.Username,
                     Notes = c.Notes,
@@ -242,9 +242,7 @@ namespace Domurion.Services
                     CreatedAt = (DateTime?)i.CreatedAt
                 });
 
-            var acceptedList = accepted.ToList();
-            var pendingList = pending.ToList();
-            return acceptedList.Concat(pendingList).ToList();
+            return accepted.Concat(pending).ToList();
         }
         #endregion
     }

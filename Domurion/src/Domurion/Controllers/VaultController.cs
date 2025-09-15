@@ -2,14 +2,16 @@ using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Domurion.Dtos;
+using Domurion.Data;
 
 namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class VaultController(IPasswordVaultService passwordVaultService) : ControllerBase
+    public class VaultController(IPasswordVaultService passwordVaultService, DataContext context) : ControllerBase
     {
         private readonly IPasswordVaultService _passwordVaultService = passwordVaultService;
+        private readonly DataContext _context = context;
 
         [HttpPost("add")]
         [Authorize]
@@ -151,7 +153,7 @@ namespace Domurion.Controllers
             return Ok(imported);
         }
 
-        [HttpPost("share")]
+        [HttpPost("share/secondary")]
         [Authorize]
         public IActionResult Share(Guid credentialId, string toIdentifier)
         {

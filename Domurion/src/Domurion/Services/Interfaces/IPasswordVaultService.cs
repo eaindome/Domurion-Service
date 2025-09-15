@@ -1,4 +1,6 @@
 using Domurion.Models;
+using Domurion.Data;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Domurion.Services.Interfaces
 {
@@ -9,6 +11,13 @@ namespace Domurion.Services.Interfaces
         string RetrievePassword(Guid credentialId, Guid userId, string? ipAddress = null);
         Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null, string? ipAddress = null);
         void DeleteCredential(Guid credentialId, Guid userId, string? ipAddress = null);
+
+        // Share invitation
+        SharedCredentialInvitation CreateShareInvitation(Guid credentialId, Guid fromUserId, string toIdentifier, DataContext context);
+        Credential AcceptShareInvitation(Guid invitationId, Guid recipientUserId, DataContext context);
+
+        void RejectShareInvitation(Guid invitationId, Guid recipientUserId, DataContext context);
+        IEnumerable<object> ListSharedCredentials(Guid userId, DataContext context);
 
         // Password sharing
         Credential ShareCredential(Guid credentialId, Guid fromUserId, string toUsername, string? ipAddress = null);
