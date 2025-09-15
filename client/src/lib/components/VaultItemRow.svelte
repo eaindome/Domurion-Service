@@ -1,7 +1,9 @@
 <script lang="ts">
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	import { createEventDispatcher } from 'svelte';
 	import type { VaultItem } from '$lib/types';
 	import { maskPassword, getSiteFavicon } from '$lib/utils/helpers';
+	import { goto } from '$app/navigation';
 
 	export let item: VaultItem;
 
@@ -15,6 +17,20 @@
 
 	// Show/hide password in modal (only after 2FA)
 	let showPassword = false;
+
+	// Share modal state
+	let showShareModal = false;
+
+	// Share credential form component (lazy loaded)
+	let ShareCredentialForm: typeof import('./ShareCredentialForm.svelte').default | null = null;
+
+	async function openShareModal() {
+		showShareModal = true;
+		if (!ShareCredentialForm) {
+			const mod = await import('./ShareCredentialForm.svelte');
+			ShareCredentialForm = mod.default;
+		}
+	}
 
 
 	// 2FA modal state
@@ -92,6 +108,7 @@
 
 	$: passwordStrength = getPasswordStrength(item?.password);
 
+	// Handle copy action
 	function handleCopy(value: string, type: string) {
 		dispatch('copy', { value, type });
 		copiedField = type.toLowerCase();
@@ -99,16 +116,16 @@
 			if (copiedField === type.toLowerCase()) copiedField = null;
 		}, 1200);
 	}
-
+	// Wrapper to avoid inline function in on:click
 	function copyToClipboard(value: string, type: string) {
 		handleCopy(value, type);
 	}
 
-	import { goto } from '$app/navigation';
-	// eslint-disable-next-line svelte/no-navigation-without-resolve
+	// Wrapper to avoid inline function in on:click
 	function handleEdit() {
 		goto(`/vault/${item.id}/edit`);
 	}
+
 	function handleDelete() {
 		dispatch('delete', { item });
 	}
@@ -266,15 +283,29 @@
 				</svg>
 			</button>
 
-			{#if showShareModal}
-				<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-					<div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm relative">
-						<button class="absolute top-2 right-2 text-gray-400 hover:text-gray-600" on:click={() => showShareModal = false}>&times;</button>
-						<h2 class="text-lg font-semibold mb-4">Share Credential</h2>
-						<svelte:component this={import('./ShareCredentialForm.svelte').then(m => m.default)} item={item} closeShareModal={() => showShareModal = false} />
-					</div>
-				</div>
-			{/if}
+					{#if showShareModal}
+						<!-- Glassmorphic Backdrop -->
+						<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+							<div class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+							<!-- Modal -->
+							<div class="relative w-full max-w-sm rounded-2xl border border-white/30 bg-white/90 p-8 shadow-2xl backdrop-blur-xl" style="box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);">
+								<button class="absolute top-3 right-3 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none" on:click={() => showShareModal = false} aria-label="Close share modal">
+									<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+								<h2 class="mb-4 text-lg font-semibold text-gray-900">Share Credential</h2>
+								{#if ShareCredentialForm}
+									<svelte:component this={ShareCredentialForm} {item} closeShareModal={() => showShareModal = false} />
+								{:else}
+									<div class="flex flex-col items-center justify-center py-8">
+										<div class="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+										<div class="text-gray-500 text-sm">Loading share form...</div>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
 		</div>
 
 		<!-- Details Modal -->
