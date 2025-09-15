@@ -1,4 +1,4 @@
-export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
+export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
     const response = await fetch('/api/users/me', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
