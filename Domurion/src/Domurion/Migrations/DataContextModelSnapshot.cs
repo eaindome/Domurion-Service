@@ -63,6 +63,9 @@ namespace Domurion.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("EncryptedPassword")
                         .IsRequired()
                         .HasColumnType("text");
@@ -71,9 +74,24 @@ namespace Domurion.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SharedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SharedFromUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Site")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -108,6 +126,42 @@ namespace Domurion.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PasswordHistories");
+                });
+
+            modelBuilder.Entity("Domurion.Models.SharedCredentialInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FromUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Rejected")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ToEmail")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ToUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SharedCredentialInvitations");
                 });
 
             modelBuilder.Entity("Domurion.Models.SupportRequest", b =>
@@ -152,6 +206,10 @@ namespace Domurion.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AuthProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("GoogleId")
