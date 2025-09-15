@@ -20,7 +20,7 @@ const initialState: AuthState = {
 	error: null
 };
 
-import { fetchCurrentUser } from '$lib/api/auth';
+import { fetchCurrentUser } from '$lib/api/users';
 
 function createAuthStore() {
 	const { subscribe, set, update } = writable<AuthState>(initialState);
@@ -30,7 +30,16 @@ function createAuthStore() {
 		try {
 			const res = await fetchCurrentUser();
 			if (res.success && res.user) {
-				set({ user: res.user, isAuthenticated: true, loading: false, error: null });
+				set({ 
+					user: { 
+						id: res.user.id, 
+						email: res.user.email ?? '', 
+						name: res.user.name 
+					}, 
+					isAuthenticated: true, 
+					loading: false, 
+					error: null 
+				});
 			} else {
 				set(initialState);
 			}

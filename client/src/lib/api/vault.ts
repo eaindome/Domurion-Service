@@ -23,6 +23,24 @@ export async function addVaultEntry(userId: string, site: string, username: stri
 	}
 }
 
+// Fetch a specific vault entry by credentialId and userId
+export async function getVaultEntry(credentialId: string, userId: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const response = await fetch(`/api/vault/get?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`);
+	if (response.ok) {
+		const data = await response.json();
+		return { success: true, entry: data };
+	} else {
+		let errorMsg = 'Unknown error';
+		try {
+			const data = await response.json();
+			errorMsg = data.error || data.message || errorMsg;
+		} catch (err) {
+			console.log(`Error fetching entry: ${err}`);
+		}
+		return { success: false, error: errorMsg };
+	}
+}
+
 // List vault entries for user
 export async function listVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
 	const response = await fetch(`/api/vault/list?userId=${encodeURIComponent(userId)}`);
@@ -161,6 +179,24 @@ export async function importVault(userId: string, credentials: { site: string; u
 			errorMsg = data.error || data.message || errorMsg;
 		} catch (err) {
 			console.log(`Error importing vault: ${err}`);
+		}
+		return { success: false, error: errorMsg };
+	}
+}
+
+export async function listSharedVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
+	const response = await fetch(`/api/vault/shared?userId=${encodeURIComponent(userId)}`);
+	if (response.ok) {
+		const data = await response.json();
+		return { success: true, entries: data };
+	}
+	else {
+		let errorMsg = 'Unknown error';
+		try {
+			const data = await response.json();
+			errorMsg = data.error || data.message || errorMsg;
+		} catch (err) {
+			console.log(`Error listing shared entries: ${err}`);
 		}
 		return { success: false, error: errorMsg };
 	}

@@ -15,7 +15,7 @@ async function handleShare() {
   isSubmitting = true;
   error = '';
   try {
-    const res = await createShareInvitation(item.id, recipient);
+    const res = await createShareInvitation(String(item.id), recipient);
     if (res.success) {
       toast.show('Share invitation sent!', 'success');
       closeShareModal();
@@ -31,8 +31,8 @@ async function handleShare() {
 </script>
 
 <form on:submit|preventDefault={handleShare} class="space-y-4">
-  <label class="block text-sm font-medium text-gray-700 mb-1">Share with (username or email):</label>
-  <input type="text" bind:value={recipient} class="w-full rounded border px-3 py-2" placeholder="Enter username or email" required />
+  <label for="recipient" class="block text-sm font-medium text-gray-700 mb-1">Share with (username or email):</label>
+  <input id="recipient" type="text" bind:value={recipient} class="w-full rounded border px-3 py-2" placeholder="Enter username or email" required />
   {#if error}
     <div class="text-red-600 text-sm">{error}</div>
   {/if}

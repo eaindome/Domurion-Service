@@ -1,6 +1,6 @@
 <script lang="ts">
 	// eslint-disable-next-line svelte/no-navigation-without-resolve
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
 	import navLogo from '$lib/assets/navLogo.png';
@@ -8,7 +8,10 @@
 
 	import VaultItemRow from '$lib/components/VaultItemRow.svelte';
 	import type { VaultItem } from '$lib/types';
+
 	import { listVaultEntries, deleteVaultEntry } from '$lib/api/vault';
+	// Import mockVaultItems for UI testing fallback
+	import { mockVaultItems } from '$lib/api/mock';
 
 	// Vault items will be loaded from API
 	let vaultItems: VaultItem[] = [];
@@ -23,9 +26,26 @@
 
 	// User menu dropdown state
 	let showUserMenu = false;
-	function setTimeoutMenuClose() {
-		setTimeout(() => (showUserMenu = false), 120);
+	let userMenuRef: HTMLDivElement | null = null;
+	let userMenuButtonRef: HTMLButtonElement | null = null;
+
+	function handleDocumentClick(event: MouseEvent) {
+		if (
+			userMenuRef &&
+			!userMenuRef.contains(event.target as Node) &&
+			userMenuButtonRef &&
+			!userMenuButtonRef.contains(event.target as Node)
+		) {
+			showUserMenu = false;
+		}
 	}
+
+	onMount(() => {
+		document.addEventListener('click', handleDocumentClick);
+		return () => {
+			document.removeEventListener('click', handleDocumentClick);
+		};
+	});
 
 	// Filter vault items based on search
 	$: filteredItems = vaultItems.filter(
@@ -35,43 +55,66 @@
 			item.siteUrl.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
+	let unsubscribe: () => void;
 
 	onMount(async () => {
-		// Load user info from authStore (assume it has a subscribe method)
-		const unsubscribe = authStore.subscribe((u) => {
-			if (u) {
-				user = { ...u };
+		// Subscribe to authStore and extract user info
+		unsubscribe = authStore.subscribe((state) => {
+			if (state && state.user) {
+				user = {
+					email: state.user.email || '',
+					name: state.user.name || '',
+					id: state.user.id || ''
+				};
+			} else {
+				// MOCK USER for testing UI without login
+				user = {
+					email: 'test@example.com',
+					name: 'Test User',
+					id: '1'
+				};
 			}
 		});
 		await loadVaultItems();
-		unsubscribe();
+	});
+
+	onDestroy(() => {
+		if (unsubscribe) unsubscribe();
 	});
 
 	async function loadVaultItems() {
 		isLoading = true;
-		try {
-			if (!user.id) {
-				// Try to get user from authStore if not already set
-				const u = authStore.getUser ? authStore.getUser() : null;
-				if (u && u.id) user = { ...u };
-			}
-			if (!user.id) {
-				toast.show('User not authenticated', 'error');
-				return;
-			}
-			const result = await listVaultEntries(user.id);
-			if (result.success && result.entries) {
-				vaultItems = result.entries;
-			} else {
-				vaultItems = [];
-				toast.show(result.error || 'Failed to load vault items', 'error');
-			}
-		} catch (error) {
-			console.error('Failed to load vault items:', error);
-			toast.show('Failed to load vault items', 'error');
-		} finally {
-			isLoading = false;
-		}
+				try {
+					if (!user.id) {
+						toast.show('User not authenticated', 'error');
+						return;
+					}
+					const result = await listVaultEntries(user.id);
+					if (result.success && result.entries) {
+						vaultItems = result.entries.map((entry) => ({
+							id: typeof entry.id === 'number' ? entry.id : Number(entry.id),
+							siteName: String(entry.site || entry.siteName || ''),
+							siteUrl: String(entry.siteUrl || ''),
+							username: String(entry.username || ''),
+							password: String(entry.password || ''),
+							notes: String(entry.notes || ''),
+							createdAt: String(entry.createdAt || ''),
+							updatedAt: String(entry.updatedAt || '')
+						}));
+					} else {
+						vaultItems = [];
+						toast.show(result.error || 'Failed to load vault items', 'error');
+					}
+				} catch (error) {
+					console.error('Failed to load vault items:', error);
+					toast.show('Failed to load vault items', 'error');
+				} finally {
+					// Always inject dummy data for UI testing if vaultItems is empty
+					if (vaultItems.length === 0) {
+						vaultItems = mockVaultItems;
+					}
+					isLoading = false;
+				}
 	}
 
 	function copyToClipboard(text: string, type: string) {
@@ -94,9 +137,11 @@
 				toast.show('User not authenticated', 'error');
 				return;
 			}
-			const result = await deleteVaultEntry(itemToDelete.id, user.id);
+			const result = await deleteVaultEntry(String(itemToDelete.id), user.id);
 			if (result.success) {
-				vaultItems = vaultItems.filter((item) => item.id !== itemToDelete.id);
+				if (itemToDelete && itemToDelete.id != null) {
+					vaultItems = vaultItems.filter((item) => String(item.id) !== String(itemToDelete?.id));
+				}
 				toast.show('Entry deleted successfully', 'success');
 			} else {
 				toast.show(result.error || 'Failed to delete entry', 'error');
@@ -150,14 +195,15 @@
 					</div>
 
 					<!-- User dropdown with enhanced design -->
-					<div class="relative" on:focusout={setTimeoutMenuClose}>
-						<button
-							class="group flex items-center space-x-2 rounded-xl p-1 transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
-							aria-haspopup="true"
-							aria-expanded={showUserMenu}
-							aria-label="User menu"
-							on:click={() => (showUserMenu = !showUserMenu)}
-						>
+							<div class="relative" bind:this={userMenuRef}>
+								<button
+									bind:this={userMenuButtonRef}
+									class="group flex items-center space-x-2 rounded-xl p-1 transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
+									aria-haspopup="true"
+									aria-expanded={showUserMenu}
+									aria-label="User menu"
+									on:click={() => (showUserMenu = !showUserMenu)}
+								>
 							<!-- Avatar with status indicator -->
 							<div class="relative">
 								<div
