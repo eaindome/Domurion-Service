@@ -2,7 +2,7 @@
 	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { toast, type ToastType } from '$lib/stores/toast';
 	import { deleteVaultEntry, updateVaultEntry, getVaultEntry } from '$lib/api/vault';
 	import { validateVaultEntry } from '$lib/validation/validations';
@@ -42,13 +42,14 @@
 	// Load existing entry data
 	onMount(async () => {
 		try {
-			const entry = await getVaultEntry(entryId);
-			if (entry) {
-				formData = { ...entry };
-				originalData = { ...entry };
+			const result = await getVaultEntry(entryId, userId);
+			if (result.success && result.entry) {
+				formData = { ...result.entry };
+				originalData = { ...result.entry };
 			} else {
 				// Entry not found or error
-				goto('/dashboard');
+				toast.show('Entry not found', 'error');
+				setTimeout(() => goto('/dashboard'), 2000);
 			}
 		} catch (error) {
 			console.error('Error loading entry:', error);

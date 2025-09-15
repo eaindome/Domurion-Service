@@ -222,3 +222,5 @@
     }
   }
 </style>
+
+<!--  VITE_MOCK_API=true npm run dev -->
