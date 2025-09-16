@@ -6,7 +6,6 @@ using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Domurion.Services;
-using System.Net.Http;
 using System.Text.Json;
 
 namespace Domurion.Controllers
@@ -135,13 +134,40 @@ namespace Domurion.Controllers
                     // genererrate otp
                     var otp = new Random().Next(100000, 999999).ToString();
                     user.PendingOtp = otp;
-                    user.PendingOtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
+                    user.PendingOtpExpiresAt = DateTime.UtcNow.AddMinutes(10);
                     _userService.Save(user);
 
-                    // send OTP via email
+                    // send OTP via email using template
                     var subject = "Your login OTP";
-                    var body = $"Your one-time password (OTP) is: {otp}\nIt expires in 5 minutes.";
-                    _emailService.SendEmail(user.Email, subject, body);
+                    var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+                    var userAgent = Request.Headers.UserAgent.ToString();
+                    string location = "Unknown";
+                    try
+                    {
+                        using var httpClient = new HttpClient();
+                        var response = httpClient.GetStringAsync($"http://ip-api.com/json/{ip}").Result;
+                        var geo = JsonDocument.Parse(response);
+                        if (geo.RootElement.GetProperty("status").GetString() == "success")
+                        {
+                            var city = geo.RootElement.GetProperty("city").GetString() ?? "Unknown";
+                            var country = geo.RootElement.GetProperty("country").GetString() ?? "Unknown";
+                            location = $"{city}, {country}";
+                        }
+                    }
+                    catch { /* Ignore geo-IP errors */ }
+                    var placeholders = new Dictionary<string, string>
+                    {
+                        { "USER_EMAIL", user.Email },
+                        { "OTP_CODE", otp },
+                        { "LOGIN_TIME", time },
+                        { "IP_ADDRESS", ip },
+                        { "LOCATION", location },
+                        { "USER_AGENT", userAgent }
+                    };
+                    var templatePath = "Templates/Email/login_otp.html";
+                    var body = _emailService.RenderTemplate(templatePath, placeholders);
+                    _emailService.SendEmail(user.Email, subject, body, isHtml: true);
 
                     return Unauthorized(new { error = "OTP required.", twoFactorRequired = true });
                 }
