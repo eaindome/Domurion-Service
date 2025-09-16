@@ -24,19 +24,29 @@ export function handleGoogleOAuthRedirect() {
 }
 
 export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string }; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-    });
+    let response;
+    try {
+        response = await fetch(`${API_BASE}/api/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+    } catch (err) {
+        console.log(`Error during login fetch: ${err}`);
+        return { success: false, message: 'Network error during login' };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'Unexpected response from server.' };
+    }
+
     if (response.ok) {
         try {
             const data = await response.json();
-            // If backend returns a token, store it in cookies
             if (data.token) {
                 setTokenCookie(data.token);
             }
-            // Expecting backend to return { user: { id, email, name? } }
             return { success: true, user: data.user };
         } catch (err) {
             console.log(`Error parsing login response: ${err}`);
