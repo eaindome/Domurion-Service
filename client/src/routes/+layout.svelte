@@ -4,7 +4,6 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/authStore';
-	import { goto } from '$app/navigation';
 
 	// --- Auto-lock vault global logic ---
 
