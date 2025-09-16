@@ -25,7 +25,7 @@ namespace Domurion.Controllers
             {
                 var username = userDto.Email.Split('@')[0];
                 var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
-                var verificationUrl = $"https://domurion-service.vercel.app/verify/email?email={userDto.Email}&token={user.EmailVerificationToken}";
+                var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
                 var subject = "Verify your email address";
                 var body = $"Welcome! Please verify your email by clicking this link: {verificationUrl}";
                 _emailService.SendEmail(user.Email, subject, body);
@@ -98,7 +98,7 @@ namespace Domurion.Controllers
                 // Fetch user preferences for session timeout
                 var prefs = _preferencesService.GetPreferences(user.Id);
                 // Generate JWT token with session timeout
-                var token = Helpers.JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
+                var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
 
                 // Send login notification email
                 try
@@ -117,6 +117,34 @@ namespace Domurion.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
+        }
+
+        [HttpPost("resend-verification")]
+        [AllowAnonymous]
+        public IActionResult ResendVerification([FromBody] string email)
+        {
+            var user = _userService.GetByEmail(email);
+            if (user == null)
+                return NotFound(new { error = "User not found." });
+
+            if (user.LastVerificationEmailSentAt != null && user.LastVerificationEmailSentAt > DateTime.UtcNow.AddMinutes(-1))
+                return BadRequest(new { error = "Please wait before requesting another verification email." });
+
+            if (user.EmailVerified)
+                    return BadRequest(new { error = "Email is already verified." });
+
+            // Generate a new token if missing or expired (optional: always generate new)
+            user.EmailVerificationToken = Guid.NewGuid().ToString("N");
+            user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+            user.LastVerificationEmailSentAt = DateTime.UtcNow;
+            _userService.Save(user);
+
+            var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
+            var subject = "Verify your email address";
+            var body = $"Please verify your email by clicking this link: {verificationUrl}";
+            _emailService.SendEmail(user.Email, subject, body);
+
+            return Ok(new { message = "Verification email sent." });
         }
 
         [HttpPut("update")]
@@ -150,11 +178,14 @@ namespace Domurion.Controllers
         public IActionResult VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
             var user = _userService.GetByVerificationToken(token);
-            if (user == null || !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            if (user == null
+                || user.EmailVerificationTokenExpiresAt == null
+                || user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
                 return BadRequest("Invalid or expired verification token.");
 
             user.EmailVerified = true;
             user.EmailVerificationToken = null;
+            user.EmailVerificationTokenExpiresAt = null;
             _userService.Save(user);
 
             return Ok("Email verified successfully. You can now log in.");

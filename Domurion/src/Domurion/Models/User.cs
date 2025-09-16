@@ -33,5 +33,7 @@ namespace Domurion.Models
 
         public bool EmailVerified { get; set; } = false;
         public string? EmailVerificationToken { get; set; }
+        public DateTime? EmailVerificationTokenExpiresAt { get; set; }
+        public DateTime? LastVerificationEmailSentAt { get; set; }
     }
 }

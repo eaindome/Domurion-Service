@@ -33,7 +33,8 @@ namespace Domurion.Services
                 Name = name,
                 Username = username,
                 EmailVerified = false,
-                EmailVerificationToken = verificationToken
+                EmailVerificationToken = verificationToken,
+                EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24)
             };
             _context.Users.Add(user);
             _context.SaveChanges();
@@ -48,6 +49,11 @@ namespace Domurion.Services
         {
             _context.Users.Update(user);
             _context.SaveChanges();
+        }
+
+        public User? GetByEmail(string email)
+        {
+            return _context.Users.FirstOrDefault(u => u.Email == email);
         }
 
         public User? Login(string email, string password)

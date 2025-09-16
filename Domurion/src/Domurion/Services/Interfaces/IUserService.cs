@@ -7,6 +7,7 @@ namespace Domurion.Services.Interfaces
         User Register(string email, string password, string? name = null, string? username = null);
         User? Login(string username, string password);
         User? GetByUsername(string username);
+        User? GetByEmail(string email);
         User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null);
         void DeleteUser(Guid userId);
         User? GetById(Guid userId);
