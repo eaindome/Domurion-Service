@@ -20,8 +20,8 @@
   onMount(async () => {
     const url = new URL(get(page).url);
     email = url.searchParams.get('email') || '';
-    token = url.searchParams.get('token') || '';
-    if (!email || !token) {
+    token = url.searchParams.keys().next().value || '';
+    if (!token) {
       isError = true;
       errorMsg = 'Invalid verification link.';
       isLoading = false;
