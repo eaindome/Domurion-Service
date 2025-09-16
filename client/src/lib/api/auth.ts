@@ -8,7 +8,7 @@ function setTokenCookie(token: string) {
 
 // Redirects user to backend Google OAuth endpoint
 export function signInWithGoogle() {
-    window.location.href = '/api/auth/google-login?returnUrl=' + encodeURIComponent(window.location.origin + '/dashboard');
+    window.location.href = `${API_BASE}/api/auth/google-login?returnUrl=` + encodeURIComponent(window.location.origin + '/dashboard');
 }
 
 // Call this after Google OAuth redirect to extract token from URL and store in cookies
@@ -24,7 +24,7 @@ export function handleGoogleOAuthRedirect() {
 }
 
 export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string }; message?: string }> {
-    const response = await fetch('/api/users/login', {
+    const response = await fetch(`${API_BASE}/api/users/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
