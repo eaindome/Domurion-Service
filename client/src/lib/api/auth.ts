@@ -86,7 +86,23 @@ export async function register(email: string, password: string, name?: string): 
     }
 }
 
-
-
+export async function verifyEmail(token: string): Promise<{ success: boolean; message?: string }> {
+    const response = await fetch(`${API_BASE}/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    if (response.ok) {
+        return { success: true };
+    } else {
+        let errorMsg = 'Unknown error';
+        try {
+            const data = await response.json();
+            errorMsg = data.error || data.message || errorMsg;
+        } catch (err) {
+            console.log(`Error verifying email: ${err}`);
+        }
+        return { success: false, message: errorMsg };
+    }
+}
 
 
