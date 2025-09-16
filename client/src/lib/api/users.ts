@@ -1,5 +1,7 @@
+import { API_BASE } from "./config";
+
 export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
-    const response = await fetch('/api/users/me', {
+    const response = await fetch(`${API_BASE}/api/users/me`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
     });
@@ -32,7 +34,7 @@ export async function updateUser(
 }> {
     const params = new URLSearchParams();
     if (name) params.append('name', name);
-    const url = `/api/users/update?${params.toString()}`;
+    const url = `${API_BASE}/api/users/update?${params.toString()}`;
     const body: { userId: string; newUsername?: string; newPassword?: string } = { userId };
     if (newUsername) body.newUsername = newUsername;
     if (newPassword) body.newPassword = newPassword;
@@ -58,7 +60,7 @@ export async function updateUser(
 
 // Delete user
 export async function deleteUser(userId: string): Promise<{ success: boolean; message?: string }> {
-    const url = `/api/users/delete?userId=${encodeURIComponent(userId)}`;
+    const url = `${API_BASE}/api/users/delete?userId=${encodeURIComponent(userId)}`;
     const response = await fetch(url, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
@@ -79,7 +81,7 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
 
 // Generate password
 export async function generatePassword(length: number = 16): Promise<{ success: boolean; password?: string; message?: string }> {
-    const url = `/api/users/generate-password?length=${length}`;
+    const url = `${API_BASE}/api/users/generate-password?length=${length}`;
     const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -101,7 +103,7 @@ export async function generatePassword(length: number = 16): Promise<{ success: 
 
 // Link Google account
 export async function linkGoogle(googleId: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch('/api/users/link-google', {
+    const response = await fetch(`${API_BASE}/api/users/link-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(googleId)
@@ -122,7 +124,7 @@ export async function linkGoogle(googleId: string): Promise<{ success: boolean; 
 
 // Unlink Google account
 export async function unlinkGoogle(): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch('/api/users/unlink-google', {
+    const response = await fetch(`${API_BASE}/api/users/unlink-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     });
