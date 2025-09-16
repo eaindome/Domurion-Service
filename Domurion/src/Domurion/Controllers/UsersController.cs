@@ -28,8 +28,15 @@ namespace Domurion.Controllers
                 var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
                 var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
                 var subject = "Verify your email address";
-                var body = $"Welcome! Please verify your email by clicking this link: {verificationUrl}";
-                _emailService.SendEmail(user.Email, subject, body);
+                // Render verification template
+                var placeholders = new Dictionary<string, string>
+                {
+                    { "USER_EMAIL", user.Email },
+                    { "VERIFICATION_URL", verificationUrl }
+                };
+                var templatePath = "Templates/Email/verification.html";
+                var body = _emailService.RenderTemplate(templatePath, placeholders);
+                _emailService.SendEmail(user.Email, subject, body, isHtml: true);
                 return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (ArgumentException ex)
@@ -201,7 +208,14 @@ namespace Domurion.Controllers
 
             var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
             var subject = "Verify your email address";
-            var body = $"Please verify your email by clicking this link: {verificationUrl}";
+            // Render verification template
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "VERIFICATION_URL", verificationUrl }
+            };
+            var templatePath = "Templates/Email/verification.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
             _emailService.SendEmail(user.Email, subject, body);
 
             return Ok(new { message = "Verification email sent." });
