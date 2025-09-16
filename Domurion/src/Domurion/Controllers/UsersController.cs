@@ -16,8 +16,9 @@ namespace Domurion.Controllers
     {
         private readonly IUserService _userService = userService;
         private readonly PreferencesService _preferencesService = preferencesService;
-        private readonly Domurion.Helpers.EmailService _emailService = emailService;
+        private readonly EmailService _emailService = emailService;
 
+        #region User Management
         [HttpPost("register")]
         public IActionResult Register([FromBody] UserDto userDto)
         {
@@ -41,6 +42,72 @@ namespace Domurion.Controllers
             }
         }
 
+        [HttpGet("me")]
+        [Authorize]
+        public IActionResult GetCurrentUser()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = _userService.GetById(Guid.Parse(userId));
+            if (user == null)
+                return NotFound();
+
+            return Ok(new
+            {
+                user.Id,
+                user.Username,
+                user.Name,
+                user.AuthProvider,
+                user.GoogleId,
+                user.TwoFactorEnabled
+            });
+        }
+
+        [HttpPut("update")]
+        [Authorize]
+        public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
+        {
+            try
+            {
+                // Accept name as an optional query parameter for update
+                var name = Request.Query["name"].ToString();
+                if (string.IsNullOrWhiteSpace(name)) name = null;
+                var user = _userService.UpdateUser(userId, newUsername, newPassword, name);
+                return Ok(new { user.Id, user.Username, user.Name });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { error = ex.Message });
+            }
+        }
+
+        [HttpDelete("delete")]
+        [Authorize]
+        public IActionResult Delete(Guid userId)
+        {
+            try
+            {
+                _userService.DeleteUser(userId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Authentications
         [HttpPost("login")]
         public IActionResult Login([FromBody] UserDto userDto)
         {
@@ -93,33 +160,24 @@ namespace Domurion.Controllers
             }
         }
 
-        [HttpPost("verify-otp")]
+        [HttpGet("verify-email")]
         [AllowAnonymous]
-        public IActionResult VerifyOtp([FromBody] OtpDto dto)
+        public IActionResult VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
-            var user = _userService.GetByEmail(dto.Email);
-            if (user == null || !user.TwoFactorEnabled)
-                return Unauthorized(new { error = "Invalid user or 2FA not enabled." });
+            var user = _userService.GetByVerificationToken(token);
+            if (user == null
+                || user.EmailVerificationTokenExpiresAt == null
+                || user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+                return BadRequest("Invalid or expired verification token.");
 
-            if (string.IsNullOrEmpty(user.PendingOtp) ||
-                user.PendingOtpExpiresAt == null ||
-                user.PendingOtpExpiresAt < DateTime.UtcNow ||
-                user.PendingOtp != dto.Otp)
-            {
-                return Unauthorized(new { error = "Invalid or expired OTP." });
-            }
-
-            // Clear OTP after use
-            user.PendingOtp = null;
-            user.PendingOtpExpiresAt = null;
+            user.EmailVerified = true;
+            user.EmailVerificationToken = null;
+            user.EmailVerificationTokenExpiresAt = null;
             _userService.Save(user);
 
-            // Generate JWT and return as in normal login
-            var prefs = _preferencesService.GetPreferences(user.Id);
-            var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
-
-            return Ok(new { user.Id, user.Username, token });
+            return Ok("Email verified successfully. You can now log in.");
         }
+
 
         [HttpPost("resend-verification")]
         [AllowAnonymous]
@@ -148,53 +206,85 @@ namespace Domurion.Controllers
 
             return Ok(new { message = "Verification email sent." });
         }
+        #endregion
 
-        [HttpPut("update")]
-        [Authorize]
-        public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
-        {
-            try
-            {
-                // Accept name as an optional query parameter for update
-                var name = Request.Query["name"].ToString();
-                if (string.IsNullOrWhiteSpace(name)) name = null;
-                var user = _userService.UpdateUser(userId, newUsername, newPassword, name);
-                return Ok(new { user.Id, user.Username, user.Name });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { error = ex.Message });
-            }
-        }
-
-        [HttpGet("verify-email")]
+        #region Otp management
+        [HttpPost("verify-otp")]
         [AllowAnonymous]
-        public IActionResult VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        public IActionResult VerifyOtp([FromBody] OtpDto dto)
         {
-            var user = _userService.GetByVerificationToken(token);
-            if (user == null
-                || user.EmailVerificationTokenExpiresAt == null
-                || user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
-                return BadRequest("Invalid or expired verification token.");
+            var user = _userService.GetByEmail(dto.Email);
+            if (user == null || !user.TwoFactorEnabled)
+                return Unauthorized(new { error = "Invalid user or 2FA not enabled." });
 
-            user.EmailVerified = true;
-            user.EmailVerificationToken = null;
-            user.EmailVerificationTokenExpiresAt = null;
+            if (string.IsNullOrEmpty(user.PendingOtp) ||
+                user.PendingOtpExpiresAt == null ||
+                user.PendingOtpExpiresAt < DateTime.UtcNow ||
+                user.PendingOtp != dto.Otp)
+            {
+                return Unauthorized(new { error = "Invalid or expired OTP." });
+            }
+
+            // Clear OTP after use
+            user.PendingOtp = null;
+            user.PendingOtpExpiresAt = null;
             _userService.Save(user);
 
-            return Ok("Email verified successfully. You can now log in.");
+            // Generate JWT and return as in normal login
+            var prefs = _preferencesService.GetPreferences(user.Id);
+            var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
+
+            return Ok(new { user.Id, user.Username, token });
         }
 
+        [HttpPost("request-view-otp")]
+        [Authorize]
+        public IActionResult RequestViewOtp()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var user = _userService.GetById(Guid.Parse(userId));
+            if (user == null || !user.TwoFactorEnabled) return BadRequest("2FA not enabled.");
 
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.PendingOtp = otp;
+            user.PendingOtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
+            _userService.Save(user);
 
+            var subject = "Your OTP for Viewing Password";
+            var body = $"Your one-time password (OTP) for viewing credentials is: {otp}\nIt expires in 5 minutes.";
+            _emailService.SendEmail(user.Email, subject, body);
+
+            return Ok(new { message = "OTP sent to your email." });
+        }
+
+        [HttpPost("verify-view-otp")]
+        [Authorize]
+        public IActionResult VerifyViewOtp([FromBody] OtpDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var user = _userService.GetById(Guid.Parse(userId));
+            if (user == null || !user.TwoFactorEnabled) return BadRequest("2FA not enabled.");
+
+            if (string.IsNullOrEmpty(user.PendingOtp) ||
+                user.PendingOtpExpiresAt == null ||
+                user.PendingOtpExpiresAt < DateTime.UtcNow ||
+                user.PendingOtp != dto.Otp)
+            {
+                return Unauthorized(new { error = "Invalid or expired OTP." });
+            }
+
+            // Clear OTP after use
+            user.PendingOtp = null;
+            user.PendingOtpExpiresAt = null;
+            _userService.Save(user);
+
+            return Ok(new { verified = true });
+        }
+        #endregion
+
+        #region Password generation
         [HttpGet("generate-password")]
         [Authorize]
         public IActionResult GeneratePassword([FromQuery] int length = 16)
@@ -202,22 +292,9 @@ namespace Domurion.Controllers
             var password = Helper.GeneratePassword(length);
             return Ok(new { password });
         }
-
-        [HttpDelete("delete")]
-        [Authorize]
-        public IActionResult Delete(Guid userId)
-        {
-            try
-            {
-                _userService.DeleteUser(userId);
-                return NoContent();
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
-            }
-        }
-
+        #endregion
+        
+        #region Linking accounts
         [HttpPost("link-google")]
         [Authorize]
         public IActionResult LinkGoogle([FromBody] string googleId)
@@ -243,28 +320,6 @@ namespace Domurion.Controllers
                 return BadRequest("No Google account to unlink.");
             return Ok("Google account unlinked successfully.");
         }
-
-        [HttpGet("me")]
-        [Authorize]
-        public IActionResult GetCurrentUser()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
-
-            var user = _userService.GetById(Guid.Parse(userId));
-            if (user == null)
-                return NotFound();
-
-            return Ok(new
-            {
-                user.Id,
-                user.Username,
-                user.Name,
-                user.AuthProvider,
-                user.GoogleId,
-                user.TwoFactorEnabled
-            });
-        }
+        #endregion        
     }
 }
