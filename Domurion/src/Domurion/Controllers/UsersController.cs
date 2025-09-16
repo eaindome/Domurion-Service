@@ -6,6 +6,8 @@ using Domurion.Services.Interfaces;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Domurion.Services;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace Domurion.Controllers
 {
@@ -116,7 +118,7 @@ namespace Domurion.Controllers
 
         #region Authentications
         [HttpPost("login")]
-        public IActionResult Login([FromBody] UserDto userDto)
+        public async Task<IActionResult> Login([FromBody] UserDto userDto)
         {
             try
             {
@@ -149,15 +151,7 @@ namespace Domurion.Controllers
                 var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
 
                 // Send login notification email
-                try
-                {
-                    var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
-                    var subject = "New Login to Your Account";
-                    var body = $"A new login to your account was detected.\n\nUsername: {user.Username}\nTime: {time}\nIP Address: {ip}\nIf this was not you, please reset your password immediately.";
-                    _emailService.SendEmail(user.Username, subject, body);
-                }
-                catch { /* Ignore email errors for login */ }
+                await SendLoginNotificationEmailAsync(user, "New Login to Your Account");
 
                 return Ok(new { user.Id, user.Username, token });
             }
@@ -198,7 +192,7 @@ namespace Domurion.Controllers
                 return BadRequest(new { error = "Please wait before requesting another verification email." });
 
             if (user.EmailVerified)
-                    return BadRequest(new { error = "Email is already verified." });
+                return BadRequest(new { error = "Email is already verified." });
 
             // Generate a new token if missing or expired (optional: always generate new)
             user.EmailVerificationToken = Guid.NewGuid().ToString("N");
@@ -247,7 +241,8 @@ namespace Domurion.Controllers
             // Generate JWT and return as in normal login
             var prefs = _preferencesService.GetPreferences(user.Id);
             var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
-
+            // Send login notification email (reuse helper)
+            SendLoginNotificationEmailAsync(user, "New Login to Your Account").ConfigureAwait(false);
             return Ok(new { user.Id, user.Username, token });
         }
 
@@ -307,7 +302,7 @@ namespace Domurion.Controllers
             return Ok(new { password });
         }
         #endregion
-        
+
         #region Linking accounts
         [HttpPost("link-google")]
         [Authorize]
@@ -334,6 +329,70 @@ namespace Domurion.Controllers
                 return BadRequest("No Google account to unlink.");
             return Ok("Google account unlinked successfully.");
         }
-        #endregion        
+        #endregion
+
+        #region Helpers
+        // Private helper for login notification email
+        private async Task SendLoginNotificationEmailAsync(Domurion.Models.User user, string subject)
+        {
+            try
+            {
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+                // Get browser and OS info from headers (best effort)
+                var userAgent = Request.Headers.UserAgent.ToString();
+                string browser = "Unknown";
+                string os = "Unknown";
+                if (!string.IsNullOrEmpty(userAgent))
+                {
+                    if (userAgent.Contains("Windows")) os = "Windows";
+                    else if (userAgent.Contains("Mac")) os = "MacOS";
+                    else if (userAgent.Contains("Linux")) os = "Linux";
+                    else if (userAgent.Contains("Android")) os = "Android";
+                    else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad")) os = "iOS";
+
+                    if (userAgent.Contains("Chrome")) browser = "Chrome";
+                    else if (userAgent.Contains("Firefox")) browser = "Firefox";
+                    else if (userAgent.Contains("Safari") && !userAgent.Contains("Chrome")) browser = "Safari";
+                    else if (userAgent.Contains("Edge")) browser = "Edge";
+                    else if (userAgent.Contains("MSIE") || userAgent.Contains("Trident")) browser = "Internet Explorer";
+                }
+                // Location info (geo-IP)
+                string city = "Unknown";
+                string country = "Unknown";
+                try
+                {
+                    using var httpClient = new HttpClient();
+                    var response = await httpClient.GetStringAsync($"http://ip-api.com/json/{ip}");
+                    var geo = JsonDocument.Parse(response);
+                    if (geo.RootElement.GetProperty("status").GetString() == "success")
+                    {
+                        city = geo.RootElement.GetProperty("city").GetString() ?? "Unknown";
+                        country = geo.RootElement.GetProperty("country").GetString() ?? "Unknown";
+                    }
+                }
+                catch { /* Ignore geo-IP errors */ }
+                // URLs
+                var secureAccountUrl = "https://domurion-service.vercel.app/reset-password";
+                var dashboardUrl = "https://domurion-service.vercel.app/dashboard";
+                var placeholders = new Dictionary<string, string>
+                {
+                    { "USER_EMAIL", user.Email },
+                    { "LOGIN_TIME", time },
+                    { "IP_ADDRESS", ip },
+                    { "BROWSER", browser },
+                    { "OPERATING_SYSTEM", os },
+                    { "LOCATION_CITY", city },
+                    { "LOCATION_COUNTRY", country },
+                    { "SECURE_ACCOUNT_URL", secureAccountUrl },
+                    { "DASHBOARD_URL", dashboardUrl }
+                };
+                var templatePath = "Templates/Email/login_notification.html";
+                var body = _emailService.RenderTemplate(templatePath, placeholders);
+                _emailService.SendEmail(user.Email, subject, body, isHtml: true);
+            }
+            catch { /* Ignore email errors for login */ }
+        }
+        #endregion
     }
 }
