@@ -46,6 +46,11 @@ namespace Domurion.Services
             return [.. _context.Credentials.Where(c => c.UserId == userId)];
         }
 
+        public Credential? GetById(Guid credentialId)
+        {
+            return _context.Credentials.FirstOrDefault(c => c.Id == credentialId);
+        }
+
         public string RetrievePassword(Guid credentialId, Guid userId, string? ipAddress = null)
         {
             var hmacKey = Environment.GetEnvironmentVariable("HMAC_KEY");

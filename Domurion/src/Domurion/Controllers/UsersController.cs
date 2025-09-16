@@ -14,10 +14,11 @@ namespace Domurion.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("fixed")]
-    public class UsersController(IUserService userService, PreferencesService preferencesService, Domurion.Helpers.EmailService emailService) : ControllerBase
+    public class UsersController(IUserService userService, PreferencesService preferencesService, PasswordVaultService passwordVaultService, EmailService emailService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
         private readonly PreferencesService _preferencesService = preferencesService;
+        private readonly PasswordVaultService _passwordVaultService = passwordVaultService;
         private readonly EmailService _emailService = emailService;
 
         #region User Management
@@ -248,7 +249,7 @@ namespace Domurion.Controllers
 
         [HttpPost("request-view-otp")]
         [Authorize]
-        public IActionResult RequestViewOtp()
+        public IActionResult RequestViewOtp(Guid credentialId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -261,8 +262,42 @@ namespace Domurion.Controllers
             _userService.Save(user);
 
             var subject = "Your OTP for Viewing Password";
-            var body = $"Your one-time password (OTP) for viewing credentials is: {otp}\nIt expires in 5 minutes.";
-            _emailService.SendEmail(user.Email, subject, body);
+            // Gather info for template
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+            var userAgent = Request.Headers.UserAgent.ToString();
+            string location = "Unknown";
+            try
+            {
+                using var httpClient = new HttpClient();
+                var response = httpClient.GetStringAsync($"http://ip-api.com/json/{ip}").Result;
+                var geo = JsonDocument.Parse(response);
+                if (geo.RootElement.GetProperty("status").GetString() == "success")
+                {
+                    var city = geo.RootElement.GetProperty("city").GetString() ?? "Unknown";
+                    var country = geo.RootElement.GetProperty("country").GetString() ?? "Unknown";
+                    location = $"{city}, {country}";
+                }
+            }
+            catch { /* Ignore geo-IP errors */ }
+
+            var credential = _passwordVaultService.GetById(credentialId);
+            string credentialSite = credential?.Site ?? "Vault";
+            string credentialUsername = user.Username;
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "CREDENTIAL_SITE", credentialSite },
+                { "CREDENTIAL_USERNAME", credentialUsername },
+                { "OTP_CODE", otp },
+                { "REQUEST_TIME", time },
+                { "IP_ADDRESS", ip },
+                { "LOCATION", location },
+                { "USER_AGENT", userAgent }
+            };
+            var templatePath = "Templates/Email/view_otp.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
+            _emailService.SendEmail(user.Email, subject, body, isHtml: true);
 
             return Ok(new { message = "OTP sent to your email." });
         }

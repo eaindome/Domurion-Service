@@ -11,6 +11,7 @@ namespace Domurion.Services.Interfaces
         string RetrievePassword(Guid credentialId, Guid userId, string? ipAddress = null);
         Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null, string? ipAddress = null);
         void DeleteCredential(Guid credentialId, Guid userId, string? ipAddress = null);
+        Credential? GetById(Guid credentialId);
 
         // Share invitation
         SharedCredentialInvitation CreateShareInvitation(Guid credentialId, Guid fromUserId, string toIdentifier, DataContext context);
