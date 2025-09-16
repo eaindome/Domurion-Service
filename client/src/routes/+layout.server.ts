@@ -2,11 +2,12 @@ import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
-	const publicRoutes = ['/login', '/register'];
+	const publicRoutes = ['/login', '/register', '/verify', '/verify/email'];
 	const currentPath = url.pathname;
+	const isPublic = publicRoutes.some(route => currentPath.startsWith(route));
 
 	// If not authenticated and not on a public route, redirect to login
-	if (!locals.user && !publicRoutes.includes(currentPath)) {
+	if (!locals.user && !isPublic) {
 		throw redirect(302, '/login');
 	}
 
