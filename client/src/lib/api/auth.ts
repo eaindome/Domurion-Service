@@ -1,3 +1,5 @@
+import { API_BASE } from "./config";
+
 // Helper to set JWT token in cookies
 function setTokenCookie(token: string) {
     // Set cookie for 7 days, secure, sameSite strict
@@ -53,11 +55,11 @@ export async function login(email: string, password: string): Promise<{ success:
     }
 }
 
-export async function register(name: string, email: string, password: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch('/api/users/register', {
+export async function register(email: string, password: string, name?: string): Promise<{ success: boolean; message?: string }> {
+    const response = await fetch(`${API_BASE}/api/users/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ email, password, name: name ?? '' })
     });
     if (response.ok) {
         try {
