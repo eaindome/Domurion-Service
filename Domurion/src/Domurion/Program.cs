@@ -26,6 +26,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<PreferencesService>();
+builder.Services.AddScoped<PasswordVaultService>();
 builder.Services.AddScoped<Domurion.Helpers.EmailService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -28,7 +28,7 @@ namespace Domurion.Controllers
             {
                 var username = userDto.Email.Split('@')[0];
                 var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
-                var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
+                var verificationUrl = $"https://domurion-service.vercel.app/verify?{user.EmailVerificationToken}";
                 var subject = "Verify your email address";
                 // Render verification template
                 var placeholders = new Dictionary<string, string>
@@ -190,7 +190,7 @@ namespace Domurion.Controllers
 
         [HttpGet("verify-email")]
         [AllowAnonymous]
-        public IActionResult VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        public IActionResult VerifyEmail([FromQuery] string token)
         {
             var user = _userService.GetByVerificationToken(token);
             if (user == null
@@ -227,7 +227,7 @@ namespace Domurion.Controllers
             user.LastVerificationEmailSentAt = DateTime.UtcNow;
             _userService.Save(user);
 
-            var verificationUrl = $"https://domurion-service.vercel.app/verify/{user.EmailVerificationToken}";
+            var verificationUrl = $"https://domurion-service.vercel.app/verify?{user.EmailVerificationToken}";
             var subject = "Verify your email address";
             // Render verification template
             var placeholders = new Dictionary<string, string>
