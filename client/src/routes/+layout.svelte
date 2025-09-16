@@ -64,13 +64,13 @@
 		authStore.hydrateAuth();
 
 		// Redirect to login if not authenticated and not on login/register
-		// let unsubAuth = authStore.subscribe(($auth) => {
-		// 	const publicRoutes = ['/login', '/register'];
-		// 	const currentPath = window.location.pathname;
-		// 	if (!$auth.isAuthenticated && !publicRoutes.includes(currentPath)) {
-		// 		goto('/login');
-		// 	}
-		// });
+		let unsubAuth = authStore.subscribe(($auth) => {
+			const publicRoutes = ['/login', '/register'];
+			const currentPath = window.location.pathname;
+			if (!$auth.isAuthenticated && !publicRoutes.includes(currentPath)) {
+				goto('/login');
+			}
+		});
 
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
@@ -95,7 +95,7 @@
 			if (autoLockTimer) clearTimeout(autoLockTimer);
 			removeAutoLockListeners();
 			unsubSettings();
-			// unsubAuth();
+			unsubAuth();
 		};
 	});
 
