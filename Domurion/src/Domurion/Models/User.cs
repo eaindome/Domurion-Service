@@ -12,12 +12,7 @@ namespace Domurion.Models
             set => _email = value ?? throw new ArgumentNullException(nameof(Email));
         }
 
-        private string _username = string.Empty;
-        public string Username
-        {
-            get => _username;
-            set => _username = value ?? throw new ArgumentNullException(nameof(Username));
-        }
+        public string Username { get; set; } = string.Empty;
 
         private string _passwordHash = string.Empty;
         public string PasswordHash
@@ -35,5 +30,8 @@ namespace Domurion.Models
         public bool TwoFactorEnabled { get; set; } = false;
         public string? TwoFactorSecret { get; set; }
         public string? TwoFactorRecoveryCodes { get; set; } // Comma-separated or JSON array
+
+        public bool EmailVerified { get; set; } = false;
+        public string? EmailVerificationToken { get; set; }
     }
 }

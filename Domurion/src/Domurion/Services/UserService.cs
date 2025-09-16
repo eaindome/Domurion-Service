@@ -5,35 +5,57 @@ using Domurion.Services.Interfaces;
 
 namespace Domurion.Services
 {
-    public class UserService(DataContext context) : IUserService
+    public class UserService(DataContext context, EmailService emailService) : IUserService
     {
         private readonly DataContext _context = context;
+        private readonly EmailService _emailService = emailService;
 
         #region User management
-        public User Register(string username, string password, string? name = null)
+        public User Register(string email, string password, string? name = null, string? username = null)
         {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("Username and password are required.");
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Email and password are required.");
 
             if (!Helper.IsStrongPassword(password))
                 throw new ArgumentException("Password does not meet strength requirements.");
 
-            if (_context.Users.Any(u => u.Username == username))
-                throw new InvalidOperationException("Username already exists.");
+            if (_context.Users.Any(u => u.Email == email))
+                throw new InvalidOperationException("Email already exists.");
+
+            username ??= email.Split('@')[0];
 
             var hashed = Helper.HashPassword(password);
-            var user = new User { Username = username, PasswordHash = hashed, Name = name };
+            var verificationToken = Guid.NewGuid().ToString("N");
+            var user = new User
+            {
+                Email = email,
+                PasswordHash = hashed,
+                Name = name,
+                Username = username,
+                EmailVerified = false,
+                EmailVerificationToken = verificationToken
+            };
             _context.Users.Add(user);
             _context.SaveChanges();
             return user;
         }
 
-        public User? Login(string username, string password)
+        public User? GetByVerificationToken(string token)
         {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("Username and password are required.");
+            return _context.Users.FirstOrDefault(u => u.EmailVerificationToken == token);
+        }
+        public void Save(User user)
+        {
+            _context.Users.Update(user);
+            _context.SaveChanges();
+        }
 
-            var user = _context.Users.FirstOrDefault(u => u.Username == username);
+        public User? Login(string email, string password)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Email and password are required.");
+
+            var user = _context.Users.FirstOrDefault(u => u.Email == email);
             if (user != null && Helper.VerifyPassword(password, user.PasswordHash))
                 return user;
             return null;

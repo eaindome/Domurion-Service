@@ -4,7 +4,7 @@ namespace Domurion.Services.Interfaces
 {
     public interface IUserService
     {
-        User Register(string username, string password, string? name = null);
+        User Register(string email, string password, string? name = null, string? username = null);
         User? Login(string username, string password);
         User? GetByUsername(string username);
         User UpdateUser(Guid userId, string? newUsername, string? newPassword, string? newName = null);
@@ -19,5 +19,8 @@ namespace Domurion.Services.Interfaces
 
         // Unlink a Google account from an existing user
         bool UnlinkGoogleAccount(Guid userId);
+
+        User? GetByVerificationToken(string token);
+        void Save(User user);
     }
 }

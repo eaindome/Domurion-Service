@@ -23,7 +23,12 @@ namespace Domurion.Controllers
         {
             try
             {
-                var user = _userService.Register(userDto.Username, userDto.Password, userDto.Name);
+                var username = userDto.Email.Split('@')[0];
+                var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
+                var verificationUrl = $"https://domurion-service.vercel.app/verify/email?email={userDto.Email}&token={user.EmailVerificationToken}";
+                var subject = "Verify your email address";
+                var body = $"Welcome! Please verify your email by clicking this link: {verificationUrl}";
+                _emailService.SendEmail(user.Email, subject, body);
                 return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (ArgumentException ex)
@@ -41,10 +46,12 @@ namespace Domurion.Controllers
         {
             try
             {
-                var user = _userService.Login(userDto.Username, userDto.Password);
+                var user = _userService.Login(userDto.Email, userDto.Password);
                 if (user == null)
-                    return Unauthorized(new { error = "Invalid username or password." });
+                    return Unauthorized(new { error = "Invalid email or password." });
 
+                if (!user.EmailVerified)
+                    return Unauthorized(new { error = "Please verify your email before logging in." });
                 // If 2FA is enabled, require 2FA code
                 if (user.TwoFactorEnabled)
                 {
@@ -72,17 +79,14 @@ namespace Domurion.Controllers
                             codes.Remove(code);
                             user.TwoFactorRecoveryCodes = string.Join(",", codes);
                             // Save change to DB using a new DataContext instance
-                            using (var scope = HttpContext.RequestServices.CreateScope())
+                            using var scope = HttpContext.RequestServices.CreateScope();
+                            if (scope.ServiceProvider.GetService(typeof(Domurion.Data.DataContext)) is Domurion.Data.DataContext db)
                             {
-                                var db = scope.ServiceProvider.GetService(typeof(Domurion.Data.DataContext)) as Domurion.Data.DataContext;
-                                if (db != null)
+                                var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
+                                if (dbUser != null)
                                 {
-                                    var dbUser = db.Users.FirstOrDefault(u => u.Id == user.Id);
-                                    if (dbUser != null)
-                                    {
-                                        dbUser.TwoFactorRecoveryCodes = user.TwoFactorRecoveryCodes;
-                                        db.SaveChanges();
-                                    }
+                                    dbUser.TwoFactorRecoveryCodes = user.TwoFactorRecoveryCodes;
+                                    db.SaveChanges();
                                 }
                             }
                         }
@@ -140,6 +144,23 @@ namespace Domurion.Controllers
                 return Conflict(new { error = ex.Message });
             }
         }
+
+        [HttpGet("verify-email")]
+        [AllowAnonymous]
+        public IActionResult VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        {
+            var user = _userService.GetByVerificationToken(token);
+            if (user == null || !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Invalid or expired verification token.");
+
+            user.EmailVerified = true;
+            user.EmailVerificationToken = null;
+            _userService.Save(user);
+
+            return Ok("Email verified successfully. You can now log in.");
+        }
+
+
 
         [HttpGet("generate-password")]
         [Authorize]
