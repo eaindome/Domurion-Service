@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
+  import { verifyEmail } from '$lib/api/auth';
+  import { toast } from '$lib/stores/toast';
 
   let email = '';
   let token = '';
@@ -18,8 +20,8 @@
   onMount(async () => {
     const url = new URL(get(page).url);
     email = url.searchParams.get('email') || '';
-    token = url.searchParams.get('token') || '';
-    if (!email || !token) {
+    token = url.searchParams.keys().next().value || '';
+    if (!token) {
       isError = true;
       errorMsg = 'Invalid verification link.';
       isLoading = false;
@@ -27,16 +29,14 @@
     }
     // Call backend verify endpoint
     try {
-      const res = await fetch('/api/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token })
-      });
-      if (res.ok) {
+      const result = await verifyEmail(token);
+      if (result.success) {
+        toast.show('Email verified successfully', 'success');
         // Success: redirect to login
-        goto('/login?verified=1');
+        setTimeout(() => goto('/login'), 1000);
       } else {
         isError = true;
+        toast.show('Email verification failed', 'error');
         errorMsg = 'Verification failed. You can resend the verification link below.';
       }
     } catch (e) {

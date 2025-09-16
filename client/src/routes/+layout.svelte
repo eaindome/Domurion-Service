@@ -4,7 +4,6 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/authStore';
-	import { goto } from '$app/navigation';
 
 	// --- Auto-lock vault global logic ---
 
@@ -63,15 +62,6 @@
 		// Hydrate auth state from cookie/session on app load
 		authStore.hydrateAuth();
 
-		// Redirect to login if not authenticated and not on login/register
-		// let unsubAuth = authStore.subscribe(($auth) => {
-		// 	const publicRoutes = ['/login', '/register'];
-		// 	const currentPath = window.location.pathname;
-		// 	if (!$auth.isAuthenticated && !publicRoutes.includes(currentPath)) {
-		// 		goto('/login');
-		// 	}
-		// });
-
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));
 		if (autoLockValue) {
@@ -95,7 +85,6 @@
 			if (autoLockTimer) clearTimeout(autoLockTimer);
 			removeAutoLockListeners();
 			unsubSettings();
-			// unsubAuth();
 		};
 	});
 

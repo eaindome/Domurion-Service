@@ -4,9 +4,11 @@
 
 	let showPasswordRequirements = false;
 	import navLogo from '$lib/assets/logo.png';
-	import { signInWithGoogle } from '$lib/api/auth';
+	import { register, signInWithGoogle } from '$lib/api/auth';
+	
 
 
+	let name = '';
 	let email = '';
 	let password = '';
 	let confirmPassword = '';
@@ -59,22 +61,12 @@
 		error = '';
 
 		try {
-			// TODO: Replace with your actual API call
-			const response = await fetch('/api/auth/register', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ email, password })
-			});
-
-			if (response.ok) {
+			const result = await register(email, password);
+			if (result.success) {
 				// Registration successful - redirect to login or dashboard
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/login?message=registration-success');
+				goto('/verify');
 			} else {
-				const data = await response.json();
-				error = data.message || 'Registration failed. Please try again.';
+				error = result.message || 'Registration failed. Please try again.';
 			}
 		} catch (err) {
 			console.log(`Error: ${err}`);
