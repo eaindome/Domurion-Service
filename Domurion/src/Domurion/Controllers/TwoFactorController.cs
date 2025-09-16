@@ -3,18 +3,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Domurion.Services;
 using Domurion.Data;
+using Domurion.Dtos;
 using System.Security.Claims;
 using OtpNet;
-using QRCoder;
 
 namespace Domurion.Controllers
 {
     [ApiController]
     [Route("api/2fa")]
     [Authorize]
-    public class TwoFactorController(UserService userService, DataContext context) : ControllerBase
+    public class TwoFactorController(UserService userService, PreferencesService preferencesService, DataContext context) : ControllerBase
     {
         private readonly UserService _userService = userService;
+        private readonly PreferencesService _preferencesService = preferencesService;
         private readonly DataContext _context = context;
 
         [HttpPost("enable")]
@@ -27,77 +28,56 @@ namespace Domurion.Controllers
             if (user == null) return NotFound();
             if (user.TwoFactorEnabled) return BadRequest("2FA already enabled.");
 
-            // Generate secret
-            var secret = KeyGeneration.GenerateRandomKey(20);
-            var base32Secret = Base32Encoding.ToString(secret);
-            user.TwoFactorSecret = base32Secret;
-            _context.SaveChanges();
-            // Audit log
-            AuditLogger.Log(_context, user.Id, user.Username, null, "Enable2FA", null);
-
-            // Generate QR code (otpauth://)
-            var issuer = "Domurion";
-            var label = user.Username;
-            var otpauth = $"otpauth://totp/{issuer}:{label}?secret={base32Secret}&issuer={issuer}";
-            using var qrGenerator = new QRCodeGenerator();
-            using var qrData = qrGenerator.CreateQrCode(otpauth, QRCodeGenerator.ECCLevel.Q);
-            using var qrCode = new PngByteQRCode(qrData);
-            var qrCodeBytes = qrCode.GetGraphic(20);
-            var qrCodeBase64 = Convert.ToBase64String(qrCodeBytes);
-
-            return Ok(new { secret = base32Secret, qrCode = $"data:image/png;base64,{qrCodeBase64}" });
-        }
-
-        [HttpPost("verify")]
-        [Authorize]
-        public IActionResult Verify2FA([FromBody] string code)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            var user = _context.Users.FirstOrDefault(u => u.Id == Guid.Parse(userId));
-            if (user == null || string.IsNullOrEmpty(user.TwoFactorSecret)) return BadRequest("2FA not setup.");
-
-            var totp = new Totp(Base32Encoding.ToBytes(user.TwoFactorSecret));
-            if (!totp.VerifyTotp(code, out _, new VerificationWindow(previous: 1, future: 1)))
-            {
-                // Audit log
-                AuditLogger.Log(_context, user.Id, user.Username, null, "2FAVerifyFailed", null);
-                return BadRequest("Invalid code.");
-            }
-
             user.TwoFactorEnabled = true;
             _context.SaveChanges();
-            // Audit log
-            AuditLogger.Log(_context, user.Id, user.Username, null, "2FAVerifySuccess", null);
-            return Ok("2FA enabled successfully.");
+            AuditLogger.Log(_context, user.Id, user.Username, null, "Enable2FA", null);
+            return Ok("2FA enabled. You will receive OTPs via email when logging in.");
+        }
+
+        [HttpPost("verify-otp")]
+        [AllowAnonymous]
+        public IActionResult VerifyOtp([FromBody] OtpDto dto)
+        {
+            var user = _userService.GetByEmail(dto.Email);
+            if (user == null || !user.TwoFactorEnabled)
+                return Unauthorized(new { error = "Invalid user or 2FA not enabled." });
+
+            if (string.IsNullOrEmpty(user.PendingOtp) ||
+                user.PendingOtpExpiresAt == null ||
+                user.PendingOtpExpiresAt < DateTime.UtcNow ||
+                user.PendingOtp != dto.Otp)
+            {
+                return Unauthorized(new { error = "Invalid or expired OTP." });
+            }
+
+            // Clear OTP after use
+            user.PendingOtp = null;
+            user.PendingOtpExpiresAt = null;
+            _userService.Save(user);
+
+            // Generate JWT and return as in normal login
+            var prefs = _preferencesService.GetPreferences(user.Id);
+            var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
+
+            return Ok(new { user.Id, user.Username, token });
         }
 
         [HttpPost("disable")]
         [Authorize]
-        public IActionResult Disable2FA([FromBody] string code)
+        public IActionResult Disable2FA()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
             var user = _context.Users.FirstOrDefault(u => u.Id == Guid.Parse(userId));
-            if (user == null || !user.TwoFactorEnabled || string.IsNullOrEmpty(user.TwoFactorSecret))
-                return BadRequest("2FA not enabled.");
-
-            var totp = new Totp(Base32Encoding.ToBytes(user.TwoFactorSecret));
-            if (!totp.VerifyTotp(code, out _, new VerificationWindow(previous: 1, future: 1)))
-            {
-                // Audit log
-                AuditLogger.Log(_context, user.Id, user.Username, null, "2FADisableFailed", null);
-                return BadRequest("Invalid code.");
-            }
+            if (user == null) return NotFound();
+            if (!user.TwoFactorEnabled) return BadRequest("2FA already disabled.");
 
             user.TwoFactorEnabled = false;
-            user.TwoFactorSecret = null;
-            user.TwoFactorRecoveryCodes = null;
             _context.SaveChanges();
-            // Audit log
             AuditLogger.Log(_context, user.Id, user.Username, null, "Disable2FA", null);
             return Ok("2FA disabled.");
         }
+
 
         [HttpPost("generate-recovery-codes")]
         [Authorize]
