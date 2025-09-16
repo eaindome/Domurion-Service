@@ -7,7 +7,7 @@ namespace Domurion.Helpers
     {
         private readonly IConfiguration _config = config;
 
-        public void SendEmail(string to, string subject, string body)
+        public void SendEmail(string to, string subject, string body, bool isHtml = false)
         {
             var smtpHost = _config["Smtp:Host"];
             var smtpPort = int.Parse(_config["Smtp:Port"] ?? "587");
@@ -24,8 +24,31 @@ namespace Domurion.Helpers
                 Credentials = new NetworkCredential(smtpUser, smtpPass),
                 EnableSsl = true
             };
-            var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
+            var mail = new MailMessage(from, to, subject, body) { IsBodyHtml = isHtml };
             client.Send(mail);
+        }
+
+        public string RenderTemplate(string templatePath, Dictionary<string, string> placeholders)
+        {
+            // Try to resolve absolute path if needed
+            string fullPath = templatePath;
+            if (!Path.IsPathRooted(templatePath))
+            {
+                fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, templatePath.Replace('/', Path.DirectorySeparatorChar));
+            }
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException($"Email template not found: {fullPath}");
+            }
+            var html = File.ReadAllText(fullPath);
+            if (placeholders != null)
+            {
+                foreach (var kvp in placeholders)
+                {
+                    html = html.Replace($"{{{{{kvp.Key}}}}}", kvp.Value ?? "");
+                }
+            }
+            return html;
         }
     }
 }
