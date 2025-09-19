@@ -203,7 +203,7 @@ namespace Domurion.Controllers
             user.EmailVerificationTokenExpiresAt = null;
             _userService.Save(user);
 
-            return Ok("Email verified successfully. You can now log in.");
+            return Ok(new { message = "Email verified successfully. You can now log in." });
         }
 
 
