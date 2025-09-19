@@ -18,9 +18,9 @@ namespace Domurion.Controllers
         public ActionResult<UserPreferences> Get()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
             var prefs = _preferencesService.GetPreferences(Guid.Parse(userId));
-            return Ok(prefs);
+            return Ok(new { preferences = prefs });
         }
 
         [HttpPut]
@@ -28,9 +28,9 @@ namespace Domurion.Controllers
         public ActionResult<UserPreferences> Update([FromBody] UserPreferences updated)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
             var prefs = _preferencesService.UpdatePreferences(Guid.Parse(userId), updated);
-            return Ok(prefs);
+            return Ok(new { preferences = prefs });
         }
 
         [HttpGet("generate-password")]
@@ -43,7 +43,7 @@ namespace Domurion.Controllers
             [FromQuery] bool? useSymbols)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
             var prefs = _preferencesService.GetPreferences(Guid.Parse(userId));
             var password = Domurion.Helpers.Helper.GeneratePassword(
                 length ?? prefs.PasswordLength,

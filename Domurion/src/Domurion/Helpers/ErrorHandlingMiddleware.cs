@@ -27,7 +27,15 @@ namespace Domurion.Helpers
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             var code = HttpStatusCode.InternalServerError; // 500 if unexpected
-            var result = JsonSerializer.Serialize(new { error = "An unexpected error occurred." });
+            var errorMessage = "An unexpected error occurred.";
+
+            if (exception is UnauthorizedAccessException)
+            {
+                code = HttpStatusCode.Unauthorized;
+                errorMessage = "Unauthorized access.";
+            }
+            
+            var result = JsonSerializer.Serialize(new { error = errorMessage });
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)code;
             return context.Response.WriteAsync(result);

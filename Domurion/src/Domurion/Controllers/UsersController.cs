@@ -57,11 +57,11 @@ namespace Domurion.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+                return Unauthorized(new { message = "User not found." });
 
             var user = _userService.GetById(Guid.Parse(userId));
             if (user == null)
-                return NotFound();
+                return NotFound(new { message = "User not found." });
 
             return Ok(new
             {
@@ -177,6 +177,15 @@ namespace Domurion.Controllers
                 // Generate JWT token with session timeout
                 var token = JwtHelper.GenerateJwtToken(user, HttpContext.RequestServices.GetService<IConfiguration>()!, prefs);
 
+                // set jwt token in http-only cookie
+                Response.Cookies.Append("access_token", token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddHours(1)
+                });
+
                 // Send login notification email
                 await SendLoginNotificationEmailAsync(user, "New Login to Your Account");
 
@@ -196,7 +205,7 @@ namespace Domurion.Controllers
             if (user == null
                 || user.EmailVerificationTokenExpiresAt == null
                 || user.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
-                return BadRequest("Invalid or expired verification token.");
+                return BadRequest(new { message = "Invalid or expired verification token." });
 
             user.EmailVerified = true;
             user.EmailVerificationToken = null;
@@ -333,9 +342,9 @@ namespace Domurion.Controllers
         public IActionResult VerifyViewOtp([FromBody] OtpDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
             var user = _userService.GetById(Guid.Parse(userId));
-            if (user == null || !user.TwoFactorEnabled) return BadRequest("2FA not enabled.");
+            if (user == null || !user.TwoFactorEnabled) return BadRequest(new { message = "2FA not enabled." });
 
             if (string.IsNullOrEmpty(user.PendingOtp) ||
                 user.PendingOtpExpiresAt == null ||
@@ -371,11 +380,11 @@ namespace Domurion.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+                return Unauthorized(new { message = "User not found." });
             var result = _userService.LinkGoogleAccount(Guid.Parse(userId), googleId);
             if (!result)
-                return BadRequest("Google account already linked to another user.");
-            return Ok("Google account linked successfully.");
+                return BadRequest(new { message = "Google account already linked to another user." });
+            return Ok(new { message = "Google account linked successfully." });
         }
 
         [HttpPost("unlink-google")]
@@ -384,11 +393,11 @@ namespace Domurion.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+                return Unauthorized(new { message = "User not found." });
             var result = _userService.UnlinkGoogleAccount(Guid.Parse(userId));
             if (!result)
-                return BadRequest("No Google account to unlink.");
-            return Ok("Google account unlinked successfully.");
+                return BadRequest(new { message = "No Google account to unlink." });
+            return Ok(new { message = "Google account unlinked successfully." });
         }
         #endregion
 

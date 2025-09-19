@@ -34,25 +34,25 @@ namespace Domurion.Controllers
         {
             var authenticateResult = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
             if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
-                return Unauthorized();
+                return Unauthorized(new { message = "Google authentication failed." });
 
             var googleId = authenticateResult.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(googleId))
-                return BadRequest("Google ID not found.");
+                return BadRequest(new { message = "Google ID not found." });
 
             // Get the currently logged-in user from the JWT (from the original session)
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+                return Unauthorized(new { message = "User not found." });
 
             var result = _userService.LinkGoogleAccount(Guid.Parse(userId), googleId);
             if (!result)
-                return BadRequest("Google account already linked to another user.");
+                return BadRequest(new { message = "Google account already linked to another user." });
 
             if (!string.IsNullOrEmpty(returnUrl))
                 return Redirect(returnUrl + "?linked=true");
 
-            return Ok("Google account linked successfully.");
+            return Ok(new { message = "Google account linked successfully." });
         }
 
         // Unlink Google account
@@ -62,11 +62,11 @@ namespace Domurion.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+                return Unauthorized(new { message = "User not found." });
             var result = _userService.UnlinkGoogleAccount(Guid.Parse(userId));
             if (!result)
-                return BadRequest("No Google account to unlink.");
-            return Ok("Google account unlinked successfully.");
+                return BadRequest(new { message = "No Google account to unlink." });
+            return Ok(new { message = "Google account unlinked successfully." });
         }
     }
 }

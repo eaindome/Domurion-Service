@@ -32,12 +32,12 @@ namespace Domurion.Controllers
         {
             var authenticateResult = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
             if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
-                return Unauthorized();
+                return Unauthorized(new { message = "Google authentication failed." });
 
             var email = authenticateResult.Principal.FindFirst(ClaimTypes.Email)?.Value;
             var name = authenticateResult.Principal.FindFirst(ClaimTypes.Name)?.Value;
             if (string.IsNullOrEmpty(email))
-                return BadRequest("Google account email not found.");
+                return BadRequest(new { message = "Google account email not found." });
 
             // Find or create user in your DB
             var user = _userService.GetByUsername(email);
