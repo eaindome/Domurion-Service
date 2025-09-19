@@ -6,8 +6,6 @@
 	import navLogo from '$lib/assets/logo.png';
 	import { register, signInWithGoogle } from '$lib/api/auth';
 	
-
-
 	let name = '';
 	let email = '';
 	let password = '';
@@ -64,7 +62,7 @@
 			const result = await register(email, password);
 			if (result.success) {
 				// Registration successful - redirect to login or dashboard
-				goto('/verify');
+				goto('/message');
 			} else {
 				error = result.message || 'Registration failed. Please try again.';
 			}
