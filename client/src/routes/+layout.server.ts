@@ -8,6 +8,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	// If not authenticated and not on a public route, redirect to login
 	if (!locals.user && !isPublic) {
+        // console.log(`locals.user: ${locals.user}`)
 		throw redirect(302, '/login');
 	}
 
