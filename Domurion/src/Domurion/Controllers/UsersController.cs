@@ -180,7 +180,7 @@ namespace Domurion.Controllers
                 // Send login notification email
                 await SendLoginNotificationEmailAsync(user, "New Login to Your Account");
 
-                return Ok(new { user.Email, token });
+                return Ok(new { user = new { user.Id, user.Email, user.Name }, token });
             }
             catch (ArgumentException ex)
             {
