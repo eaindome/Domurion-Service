@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import type { User } from "$lib/stores/authStore";
 
 export const handle: Handle = async ({ event, resolve }) => {
-    const token = event.cookies.get('token');
+    const token = event.cookies.get('access_token');
     if (token) {
         try {
             const user = jwtDecode<User>(token);
