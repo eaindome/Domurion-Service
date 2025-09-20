@@ -3,8 +3,10 @@ import { API_BASE } from "./config";
 export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
     const response = await fetch(`${API_BASE}/api/users/me`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include' // include cookies for session
     });
+    // console.log(`Response: ${JSON.stringify(response)}`);
     if (response.ok) {
         const data = await response.json();
         // Backend returns user fields directly, not wrapped in 'user'
@@ -12,8 +14,14 @@ export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { i
     } else {
         let errorMsg = 'Unknown error';
         try {
-            const data = await response.json();
-            errorMsg = data.error || data.message || errorMsg;
+            // Only parse if content-type is JSON and body is not empty
+            if (response.headers.get('content-type')?.includes('application/json')) {
+                const text = await response.text();
+                if (text) {
+                    const data = JSON.parse(text);
+                    errorMsg = data.error || data.message || errorMsg;
+                }
+            }
         } catch (err) {
             console.log(`Error fetching current user: ${err}`);
         }
