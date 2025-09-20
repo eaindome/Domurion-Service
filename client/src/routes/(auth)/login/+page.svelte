@@ -25,7 +25,7 @@
 				authStore.setUser(response.user);
 				toast.show('Login successful', 'success');
 				await new Promise(res => setTimeout(res, 2000));
-				goto('/dashboard');
+				window.location.href = '/dashboard';
 			} else {
 				error = response.message || 'Login failed';
 				authStore.setError(error);

@@ -4,6 +4,10 @@ export interface User {
 	id: string;
 	email: string;
 	name?: string;
+	username?: string;
+	authProvider?: string;
+	googleId?: string;
+	twoFactorEnabled?: boolean;
 }
 
 interface AuthState {
@@ -29,12 +33,17 @@ function createAuthStore() {
 		update((state) => ({ ...state, loading: true }));
 		try {
 			const res = await fetchCurrentUser();
+			console.log('Hydrating auth store with user:', res);
 			if (res.success && res.user) {
 				set({ 
 					user: { 
 						id: res.user.id, 
 						email: res.user.email ?? '', 
-						name: res.user.name 
+						username: res.user.username ?? '',
+						googleId: res.user.googleId,
+						name: res.user.name ?? '',
+						authProvider: res.user.authProvider ?? '',
+						twoFactorEnabled: res.user.twoFactorEnabled ?? false
 					}, 
 					isAuthenticated: true, 
 					loading: false, 
@@ -44,7 +53,10 @@ function createAuthStore() {
 				set(initialState);
 			}
 		} catch (err) {
-			console.log(`Error hydrating auth: ${err}`);
+			const error = err as Error;
+			if (error.message !== 'Unauthorized access') {
+				console.log(`Error hydrating auth: ${error}`);
+			}
 			set(initialState);
 		}
 	}
