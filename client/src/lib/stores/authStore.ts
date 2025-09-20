@@ -4,7 +4,7 @@ export interface User {
 	id: string;
 	email: string;
 	name?: string;
-	username: string;
+	username?: string;
 	authProvider?: string;
 	googleId?: string;
 	twoFactorEnabled?: boolean;
