@@ -1,10 +1,11 @@
 import { API_BASE } from "./config";
 import type { VaultEntry } from '$lib/types';
+import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // Add vault entry
-export async function addVaultEntry(userId: string, site: string, username: string, password: string, notes?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const params = new URLSearchParams({ userId, site, username, password, notes: notes || '' });
-	const response = await fetch(`${API_BASE}/api/vault/add?${params.toString()}`, {
+export async function addVaultEntry(userId: string, site: string, email: string, password: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const params = new URLSearchParams({ userId, site, email, password, notes: notes || '', siteUrl: siteUrl || '' });
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/add?${params.toString()}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -26,7 +27,7 @@ export async function addVaultEntry(userId: string, site: string, username: stri
 
 // Fetch a specific vault entry by credentialId and userId
 export async function getVaultEntry(credentialId: string, userId: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/get?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -48,11 +49,12 @@ export async function getVaultEntry(credentialId: string, userId: string): Promi
 
 // List vault entries for user
 export async function listVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/list?userId=${encodeURIComponent(userId)}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/list?userId=${encodeURIComponent(userId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
 	});
+	console.log(`Response: ${response}`);
 	if (response.ok) {
 		const data = await response.json();
 		return { success: true, entries: data };
@@ -70,7 +72,7 @@ export async function listVaultEntries(userId: string): Promise<{ success: boole
 
 // Retrieve password for a vault entry
 export async function retrieveVaultPassword(credentialId: string, userId: string): Promise<{ success: boolean; password?: string; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -91,13 +93,14 @@ export async function retrieveVaultPassword(credentialId: string, userId: string
 }
 
 // Update vault entry
-export async function updateVaultEntry(credentialId: string, userId: string, site?: string, username?: string, password?: string, notes?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+export async function updateVaultEntry(credentialId: string, userId: string, site?: string, username?: string, password?: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
 	const params = new URLSearchParams({ credentialId, userId });
 	if (site) params.append('site', site);
+	if (siteUrl) params.append('siteUrl', siteUrl);
 	if (username) params.append('username', username);
 	if (password) params.append('password', password);
 	if (notes) params.append('notes', notes);
-	const response = await fetch(`${API_BASE}/api/vault/update?${params.toString()}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/update?${params.toString()}`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -119,8 +122,10 @@ export async function updateVaultEntry(credentialId: string, userId: string, sit
 
 // Delete vault entry
 export async function deleteVaultEntry(credentialId: string, userId: string): Promise<{ success: boolean; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/delete?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
-		method: 'DELETE'
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/delete?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.status === 204) {
 		return { success: true };
@@ -139,9 +144,10 @@ export async function deleteVaultEntry(credentialId: string, userId: string): Pr
 // Share vault entry
 export async function shareVaultEntry(credentialId: string, fromUserId: string, toUsername: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
 	const params = new URLSearchParams({ credentialId, fromUserId, toUsername });
-	const response = await fetch(`${API_BASE}/api/vault/share?${params.toString()}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/share?${params.toString()}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.ok) {
 		const data = await response.json();
@@ -160,7 +166,7 @@ export async function shareVaultEntry(credentialId: string, fromUserId: string, 
 
 // Export all vault entries (with passwords)
 export async function exportVault(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/export?userId=${encodeURIComponent(userId)}`);
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/export?userId=${encodeURIComponent(userId)}`);
 	if (response.ok) {
 		const data = await response.json();
 		return { success: true, entries: data };
@@ -178,7 +184,7 @@ export async function exportVault(userId: string): Promise<{ success: boolean; e
 
 // Import vault entries
 export async function importVault(userId: string, credentials: { site: string; username: string; password: string }[]): Promise<{ success: boolean; results?: VaultEntry[]; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/import?userId=${encodeURIComponent(userId)}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/import?userId=${encodeURIComponent(userId)}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include',
@@ -200,7 +206,7 @@ export async function importVault(userId: string, credentials: { site: string; u
 }
 
 export async function listSharedVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetch(`${API_BASE}/api/vault/shared?userId=${encodeURIComponent(userId)}`, {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/shared?userId=${encodeURIComponent(userId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'

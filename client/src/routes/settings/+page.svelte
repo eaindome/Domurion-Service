@@ -1,43 +1,41 @@
 <script lang="ts">
+	import { settings } from '$lib/stores/settings';
+	import { fetchUserSettings, updateUserSettings, generatePassword } from '$lib/api/settings';
+	import { fetchCurrentUser, updateUser, deleteUser } from '$lib/api/users';
+	import { get2FAStatus } from '$lib/api/2fa';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import navLogo from '$lib/assets/navLogo.png';
+	import { authStore } from '$lib/stores/authStore';
 
-	// User data - you'll get this from your auth store
 	let user = {
-		name: 'John Doe',
-		email: 'john.doe@email.com',
-		createdAt: '2024-01-15',
-		lastLogin: '2024-09-09',
-		vaultCount: 12,
-		subscriptionTier: 'Free'
+	  id: '',
+	  name: '',
+	  email: '',
+	  username: '',
+	  // Remove createdAt, lastLogin, vaultCount, subscriptionTier for now
 	};
 
-	// Form states
 	let activeTab = 'account';
 	let isLoading = false;
 	let successMessage = '';
 	let errorMessage = '';
 
-	// Account settings form
 	let accountForm = {
-		name: user.name,
-		email: user.email,
+		username: '',
+		email: '',
 		currentPassword: '',
 		newPassword: '',
 		confirmPassword: ''
 	};
 
-	import { settings } from '$lib/stores/settings';
-	// Security settings
 	let securitySettings = {
 		twoFactorEnabled: false,
-		sessionTimeout: 30, // minutes
+		sessionTimeout: 30,
 		autoLock: true,
 		loginNotifications: true
 	};
 
-	// Vault preferences
 	let vaultPreferences = {
 		defaultPasswordLength: 16,
 		includeUppercase: true,
@@ -48,45 +46,87 @@
 		showPasswordStrength: true
 	};
 
-	// Export/Import
 	let exportInProgress = false;
 	let importFile: File | null = null;
 
-	// Password validation
 	$: passwordMatch =
 		accountForm.newPassword &&
 		accountForm.confirmPassword &&
 		accountForm.newPassword === accountForm.confirmPassword;
-	let searchQuery = '';
-	let showDeleteModal = false;
-
-	// User info - you'll get this from your auth store
-	// let user = {
-	// 	email: 'john.doe@email.com',
-	// 	name: 'John Doe'
-	// };
-
-	// User menu dropdown state
 	let showUserMenu = false;
 	function setTimeoutMenuClose() {
 		setTimeout(() => (showUserMenu = false), 120);
 	}
-	onMount(() => {
-		// Load user settings from API
-		loadSettings();
+
+	let unsubscribe: () => void;
+	let isAuthReady = false;
+
+	onMount(async () => {
+		// Subscribe to authStore and extract user info
+		unsubscribe = authStore.subscribe((state) => {
+			// console.log('Auth state changed:', state);
+			if (state.loading) return;
+			if (state && state.user) {
+				user = {
+					email: state.user.email || '',
+					name: state.user.name || '',
+					id: state.user.id || '',
+					username: state.user.username || ''
+				};
+				isAuthReady = true;
+				loadSettings();
+			} else {
+				isAuthReady = false;
+			}
+		});
+		await loadSettings();
+	});
+
+	onDestroy(() => {
+		if (unsubscribe) unsubscribe();
 	});
 
 	async function loadSettings() {
-		try {
-			// TODO: Replace with actual API calls
-			// const response = await fetch('/api/user/settings');
-			// const settingsData = await response.json();
-			// Update local state with fetched settings
-			// securitySettings.autoLock = settingsData.autoLock;
-			// settings.set({ ...$settings, autoLock: settingsData.autoLock });
-		} catch (error) {
-			console.error('Failed to load settings:', error);
-		}
+	  isLoading = true;
+	  try {
+	    // Fetch user info
+	    const userRes = await fetchCurrentUser();
+		console.log('Fetched user:', userRes);
+	    if (userRes.success && userRes.user) {
+	      user = {
+	        id: userRes.user.id,
+	        name: userRes.user.name ?? '',
+	        email: userRes.user.email,
+			username: userRes.user.username ?? '',
+	      };
+	      accountForm.username = user.username;
+	      accountForm.email = user.email;
+	    }
+	    // Fetch user settings
+	    const settingsRes = await fetchUserSettings();
+		console.log(`Fetched settings:`, settingsRes);
+		if (settingsRes) {
+			// Only assign properties that exist on settingsRes, and cast to correct types
+			if ('autoLock' in settingsRes) securitySettings.autoLock = Boolean(settingsRes.autoLock);
+			if ('sessionTimeout' in settingsRes) securitySettings.sessionTimeout = Number(settingsRes.sessionTimeout);
+			if ('loginNotifications' in settingsRes) securitySettings.loginNotifications = Boolean(settingsRes.loginNotifications);
+			if ('defaultPasswordLength' in settingsRes) vaultPreferences.defaultPasswordLength = Number(settingsRes.defaultPasswordLength);
+			if ('includeUppercase' in settingsRes) vaultPreferences.includeUppercase = Boolean(settingsRes.includeUppercase);
+			if ('includeLowercase' in settingsRes) vaultPreferences.includeLowercase = Boolean(settingsRes.includeLowercase);
+			if ('includeNumbers' in settingsRes) vaultPreferences.includeNumbers = Boolean(settingsRes.includeNumbers);
+			if ('includeSymbols' in settingsRes) vaultPreferences.includeSymbols = Boolean(settingsRes.includeSymbols);
+			if ('autoSave' in settingsRes) vaultPreferences.autoSave = Boolean(settingsRes.autoSave);
+			if ('showPasswordStrength' in settingsRes) vaultPreferences.showPasswordStrength = Boolean(settingsRes.showPasswordStrength);
+	    }
+	    // Fetch 2FA status
+	    const twoFARes = await get2FAStatus();
+	    if (twoFARes && 'enabled' in twoFARes) securitySettings.twoFactorEnabled = twoFARes.enabled;
+	  } catch (error) {
+	    errorMessage = 'Failed to load settings.';
+	    console.error('Failed to load settings:', error);
+	  } finally {
+	    isLoading = false;
+	  }
 	}
 
 	async function updateAccount() {
@@ -94,40 +134,28 @@
 			errorMessage = 'Passwords do not match';
 			return;
 		}
-
 		isLoading = true;
 		errorMessage = '';
 		successMessage = '';
-
 		try {
-			// TODO: Replace with actual API call
-			const updateData: Record<string, string> = {
-				name: accountForm.name,
-				email: accountForm.email
-			};
-
-			if (accountForm.newPassword) {
-				updateData.currentPassword = accountForm.currentPassword;
-				updateData.newPassword = accountForm.newPassword;
+			const result = await updateUser(
+				user.id,
+				undefined,
+				accountForm.newPassword ? accountForm.newPassword : undefined,
+				accountForm.username
+			);
+			if (result.success && result.user) {
+				user.username = result.user.username ?? user.username;
+				successMessage = 'Account updated successfully!';
+				accountForm.currentPassword = '';
+				accountForm.newPassword = '';
+				accountForm.confirmPassword = '';
+			} else {
+				errorMessage = result.message || 'Failed to update account.';
 			}
-
-			// const response = await fetch('/api/user/profile', {
-			//   method: 'PUT',
-			//   headers: { 'Content-Type': 'application/json' },
-			//   body: JSON.stringify(updateData)
-			// });
-
-			successMessage = 'Account updated successfully!';
-			accountForm.currentPassword = '';
-			accountForm.newPassword = '';
-			accountForm.confirmPassword = '';
-
-			// Update user object
-			user.name = accountForm.name;
-			user.email = accountForm.email;
 		} catch (error) {
-			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update account. Please try again.';
+			console.error('Error updating account:', error);
 		} finally {
 			isLoading = false;
 			setTimeout(() => {
@@ -141,20 +169,17 @@
 		isLoading = true;
 		errorMessage = '';
 		successMessage = '';
-
 		try {
-			// TODO: Replace with actual API call
-			// await fetch('/api/user/security', {
-			//   method: 'PUT',
-			//   headers: { 'Content-Type': 'application/json' },
-			//   body: JSON.stringify(securitySettings)
-			// });
-			// Sync global store
+				const updated = await updateUserSettings({
+					theme: 'light', // or use a variable if available
+					language: 'en', // or use a variable if available
+					notificationsEnabled: securitySettings.loginNotifications
+				});
 			settings.update((s) => ({ ...s, autoLock: securitySettings.autoLock }));
 			successMessage = 'Security settings updated successfully!';
 		} catch (error) {
-			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update security settings.';
+			console.error('Error updating security settings:', error);
 		} finally {
 			isLoading = false;
 			setTimeout(() => {
@@ -168,19 +193,16 @@
 		isLoading = true;
 		errorMessage = '';
 		successMessage = '';
-
 		try {
-			// TODO: Replace with actual API call
-			// await fetch('/api/user/vault-preferences', {
-			//   method: 'PUT',
-			//   headers: { 'Content-Type': 'application/json' },
-			//   body: JSON.stringify(vaultPreferences)
-			// });
-
+				const updated = await updateUserSettings({
+					theme: 'light', // or use a variable if available
+					language: 'en', // or use a variable if available
+					notificationsEnabled: vaultPreferences.autoSave // or another relevant property
+				});
 			successMessage = 'Vault preferences updated successfully!';
 		} catch (error) {
-			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to update vault preferences.';
+			console.error('Error updating vault preferences:', error);
 		} finally {
 			isLoading = false;
 			setTimeout(() => {
@@ -192,22 +214,16 @@
 
 	async function exportVault() {
 		exportInProgress = true;
-
 		try {
-			// TODO: Replace with actual API call
+			// Replace with actual API call if available
 			// const response = await fetch('/api/vault/export');
 			// const data = await response.blob();
-
-			// Create mock export data for demo
+			// For now, use mock data
 			const exportData = {
 				exportDate: new Date().toISOString(),
 				version: '1.0',
-				entries: [
-					{ siteName: 'Google', username: 'user@example.com', password: 'password123' },
-					{ siteName: 'GitHub', username: 'username', password: 'password456' }
-				]
+				entries: [] // TODO: fetch real entries
 			};
-
 			const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
@@ -215,11 +231,10 @@
 			a.download = `vault-export-${new Date().toISOString().split('T')[0]}.json`;
 			a.click();
 			URL.revokeObjectURL(url);
-
 			successMessage = 'Vault exported successfully!';
 		} catch (error) {
-			console.log(`Error: ${error}`);
 			errorMessage = 'Failed to export vault.';
+			console.error('Error exporting vault:', error);
 		} finally {
 			exportInProgress = false;
 			setTimeout(() => {
@@ -229,7 +244,7 @@
 		}
 	}
 
-	function deleteAccount() {
+	async function deleteAccount() {
 		if (
 			confirm(
 				'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your vault entries.'
@@ -240,31 +255,35 @@
 					'This will permanently delete ALL your passwords and data. Are you absolutely sure?'
 				)
 			) {
-				// TODO: Implement account deletion
-				console.log('Account deletion requested');
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/login');
+				try {
+					const result = await deleteUser(user.id);
+					if (result.success) {
+						successMessage = 'Account deleted successfully.';
+						goto('/login');
+					} else {
+						errorMessage = result.message || 'Failed to delete account.';
+					}
+				} catch (error) {
+					errorMessage = 'Failed to delete account.';
+					console.error('Error deleting account:', error);
+				}
 			}
 		}
 	}
 
 	function handleHelpClick() {
 		showUserMenu = false;
-		console.log('Navigating to help');
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		setTimeout(() => goto('/help'), 10);
 	}
 
 	function handleDashboardClick() {
 		showUserMenu = false;
-		console.log('Navigating to dashboard');
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		setTimeout(() => goto('/dashboard'), 10);
 	}
 
-	function logout() {
-		// TODO: Clear auth store and redirect
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
+	async function logout() {
+		authStore.clearUser();
+		document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 		goto('/login');
 	}
 </script>
@@ -298,7 +317,7 @@
 						>
 							<div class="relative">
 								<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white">
-									<span class="text-sm font-semibold text-white">{user.name.charAt(0)}</span>
+									<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
 								</div>
 								<div class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"></div>
 							</div>
@@ -316,10 +335,10 @@
 								<div class="border-b border-gray-100 px-4 py-3">
 									<div class="flex items-center space-x-3">
 										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600">
-											<span class="font-semibold text-white">{user.name.charAt(0)}</span>
+											<span class="font-semibold text-white">{user.username.charAt(0)}</span>
 										</div>
 										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
+											<p class="truncate text-sm font-semibold text-gray-900">{user.username}</p>
 											<p class="truncate text-xs text-gray-500">{user.email || 'user@example.com'}</p>
 										</div>
 									</div>
@@ -499,28 +518,22 @@
 							<!-- Profile Picture -->
 							<div class="flex items-center space-x-6">
 								<div class="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-100">
-									<span class="text-2xl font-semibold text-indigo-600">{user.name.charAt(0)}</span>
+									<span class="text-2xl font-semibold text-indigo-600">{user.username.charAt(0)}</span>
 								</div>
 								<div>
-									<h3 class="text-lg font-medium text-gray-900">{user.name}</h3>
-									<p class="text-sm text-gray-500">
-										Member since {new Date(user.createdAt).toLocaleDateString()}
-									</p>
-									<p class="text-sm text-gray-500">
-										{user.vaultCount} vault entries • {user.subscriptionTier} plan
-									</p>
+									<h3 class="text-lg font-medium text-gray-900">{user.username}</h3>
 								</div>
 							</div>
 
 							<!-- Name Field -->
 							<div>
 								<label for="name" class="mb-2 block text-sm font-medium text-gray-700"
-									>Full Name</label
+									>Username</label
 								>
 								<input
-									id="name"
+									id="username"
 									type="text"
-									bind:value={accountForm.name}
+									bind:value={accountForm.username}
 									required
 									class="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
 								/>

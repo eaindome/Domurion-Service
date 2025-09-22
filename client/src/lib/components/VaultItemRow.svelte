@@ -123,6 +123,7 @@
 
 	// Wrapper to avoid inline function in on:click
 	function handleEdit() {
+		console.log(`Editing item ${item.id}`);
 		goto(`/vault/${item.id}/edit`);
 	}
 
@@ -135,6 +136,18 @@
 	function closeModal() {
 		showDetails = false;
 	}
+
+	function formatDate(dateStr: string) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 </script>
 
 <div class="p-6 transition-colors hover:bg-gray-50">
@@ -167,15 +180,15 @@
 			{/if}
 		</div>
 
-		<!-- Username -->
+		<!-- Email -->
 		<div class="flex items-center space-x-2">
-			<span class="text-xs text-gray-500">Username:</span>
-			<span class="truncate text-sm text-gray-900">{item.username}</span>
+			<span class="text-xs text-gray-500">Email:</span>
+			<span class="truncate text-sm text-gray-900">{item.email}</span>
 			<button
-				on:click={() => handleCopy(item.username, 'Username')}
+				on:click={() => handleCopy(item.email, 'email')}
 				class="text-gray-400 transition-colors hover:text-gray-600"
-				title="Copy username"
-				aria-label="Copy username"
+				title="Copy email"
+				aria-label="Copy email"
 			>
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -396,13 +409,13 @@
 						<div class="group">
 							<div class="mb-2 flex items-center justify-between">
 								<label for="username-field" class="text-sm font-medium text-gray-700"
-									>Username</label
+									>Email</label
 								>
 								<button
-									on:click={() => copyToClipboard(item.username, 'username')}
+									on:click={() => copyToClipboard(item.email, 'email')}
 									class="flex items-center rounded-md px-2 py-1 text-xs text-gray-500 transition-all duration-200 hover:bg-indigo-50 hover:text-indigo-600"
 								>
-									{#if copiedField === 'username'}
+									{#if copiedField === 'email'}
 										<svg
 											class="mr-1 h-3 w-3 text-green-600"
 											fill="currentColor"
@@ -430,12 +443,12 @@
 							</div>
 							<div class="relative">
 								<input
-									id="username-field"
+									id="email-field"
 									type="text"
-									value={item.username}
+									value={item.email}
 									readonly
 									class="w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-									on:click={() => copyToClipboard(item.username, 'username')}
+									on:click={() => copyToClipboard(item.email, 'email')}
 								/>
 							</div>
 						</div>
@@ -661,11 +674,11 @@
 						<div class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
 							<div class="text-center">
 								<div class="mb-1 text-xs font-medium text-gray-500">Created</div>
-								<div class="text-sm text-gray-900">{item.createdAt}</div>
+								<div class="text-sm text-gray-900">{formatDate(item.createdAt)}</div>
 							</div>
 							<div class="text-center">
 								<div class="mb-1 text-xs font-medium text-gray-500">Last Updated</div>
-								<div class="text-sm text-gray-900">{item.updatedAt}</div>
+								<div class="text-sm text-gray-900">{formatDate(item.updatedAt)}</div>
 							</div>
 						</div>
 					</div>

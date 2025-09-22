@@ -22,7 +22,7 @@
 	let isLoading = false;
 
 	// User info will be loaded from auth store
-	let user = { email: '', name: '', id: '' };
+	let user = { email: '', name: '', id: '', username: '' };
 
 	// User menu dropdown state
 	let showUserMenu = false;
@@ -51,31 +51,31 @@
 	$: filteredItems = vaultItems.filter(
 		(item) =>
 			item.siteName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			item.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			item.siteUrl.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	let unsubscribe: () => void;
+	let isAuthReady = false;
 
 	onMount(async () => {
 		// Subscribe to authStore and extract user info
 		unsubscribe = authStore.subscribe((state) => {
+			// console.log('Auth state changed:', state);
+			if (state.loading) return;
 			if (state && state.user) {
 				user = {
 					email: state.user.email || '',
 					name: state.user.name || '',
-					id: state.user.id || ''
+					id: state.user.id || '',
+					username: state.user.username || ''
 				};
+				isAuthReady = true;
+				loadVaultItems();
 			} else {
-				// MOCK USER for testing UI without login
-				user = {
-					email: 'test@example.com',
-					name: 'Test User',
-					id: '1'
-				};
+				isAuthReady = false;
 			}
 		});
-		await loadVaultItems();
 	});
 
 	onDestroy(() => {
@@ -83,38 +83,41 @@
 	});
 
 	async function loadVaultItems() {
+		if (!isAuthReady) return;
 		isLoading = true;
-				try {
-					if (!user.id) {
-						toast.show('User not authenticated', 'error');
-						return;
-					}
-					const result = await listVaultEntries(user.id);
-					if (result.success && result.entries) {
-						vaultItems = result.entries.map((entry) => ({
-							id: typeof entry.id === 'number' ? entry.id : Number(entry.id),
-							siteName: String(entry.site || entry.siteName || ''),
-							siteUrl: String(entry.siteUrl || ''),
-							username: String(entry.username || ''),
-							password: String(entry.password || ''),
-							notes: String(entry.notes || ''),
-							createdAt: String(entry.createdAt || ''),
-							updatedAt: String(entry.updatedAt || '')
-						}));
-					} else {
-						vaultItems = [];
-						toast.show(result.error || 'Failed to load vault items', 'error');
-					}
-				} catch (error) {
-					console.error('Failed to load vault items:', error);
-					toast.show('Failed to load vault items', 'error');
-				} finally {
-					// Always inject dummy data for UI testing if vaultItems is empty
-					if (vaultItems.length === 0) {
-						vaultItems = mockVaultItems;
-					}
-					isLoading = false;
-				}
+		try {
+			if (!user.id) {
+				toast.show('User not authenticated', 'error');
+				return;
+			}
+			console.log(`Loading vault items for user ID: ${user.id}`);
+			const result = await listVaultEntries(user.id);
+			console.log(`Vault items loaded:`, result);
+			if (result.success && result.entries) {
+				vaultItems = result.entries.map((entry) => ({
+					id: String(entry.id),
+					siteName: String(entry.site || entry.siteName || ''),
+					siteUrl: String(entry.siteUrl || ''),
+					email: String(entry.email || ''),
+					password: String(entry.password || ''),
+					notes: String(entry.notes || ''),
+					createdAt: String(entry.createdAt || ''),
+					updatedAt: String(entry.updatedAt || '')
+				}));
+			} else {
+				vaultItems = [];
+				toast.show(result.error || 'Failed to load vault items', 'error');
+			}
+		} catch (error) {
+			console.error('Failed to load vault items:', error);
+			toast.show('Failed to load vault items', 'error');
+		} finally {
+			// Always inject dummy data for UI testing if vaultItems is empty
+			// if (vaultItems.length === 0) {
+			// 	vaultItems = mockVaultItems;
+			// }
+			isLoading = false;
+		}
 	}
 
 	function copyToClipboard(text: string, type: string) {
@@ -156,6 +159,7 @@
 
 	async function logout() {
 		authStore.clearUser();
+		document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 		goto('/login');
 	}
 
@@ -191,7 +195,7 @@
 					<!-- Welcome message with better typography -->
 					<div class="hidden items-center sm:flex">
 						<span class="text-sm font-medium text-gray-600">Welcome back,</span>
-						<span class="ml-1 text-sm font-semibold text-gray-900">{user.name}</span>
+						<span class="ml-1 text-sm font-semibold text-gray-900">{user.username}</span>
 					</div>
 
 					<!-- User dropdown with enhanced design -->
@@ -209,7 +213,7 @@
 								<div
 									class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white"
 								>
-									<span class="text-sm font-semibold text-white">{user.name.charAt(0)}</span>
+									<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
 								</div>
 								<!-- Online status indicator -->
 								<div
@@ -246,7 +250,7 @@
 										<div
 											class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600"
 										>
-											<span class="font-semibold text-white">{user.name.charAt(0)}</span>
+											<span class="font-semibold text-white">{user.username.charAt(0)}</span>
 										</div>
 										<div class="min-w-0 flex-1">
 											<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
@@ -601,3 +605,12 @@
 		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 	}
 </style>
+
+{#if !isAuthReady}
+	<div class="flex min-h-screen items-center justify-center">
+		<svg class="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24">
+			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+		</svg>
+	</div>
+{/if}

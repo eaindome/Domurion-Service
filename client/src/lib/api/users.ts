@@ -1,7 +1,8 @@
 import { API_BASE } from "./config";
+import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/me`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/users/me`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include' // include cookies for session
@@ -46,10 +47,11 @@ export async function updateUser(
     const body: { userId: string; newUsername?: string; newPassword?: string } = { userId };
     if (newUsername) body.newUsername = newUsername;
     if (newPassword) body.newPassword = newPassword;
-    const response = await fetch(url, {
+    const response = await fetchWithAuth(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        credentials: 'include'
     });
     if (response.ok) {
         const data = await response.json();
@@ -69,9 +71,10 @@ export async function updateUser(
 // Delete user
 export async function deleteUser(userId: string): Promise<{ success: boolean; message?: string }> {
     const url = `${API_BASE}/api/users/delete?userId=${encodeURIComponent(userId)}`;
-    const response = await fetch(url, {
+    const response = await fetchWithAuth(url, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
     });
     if (response.status === 204) {
         return { success: true };
@@ -90,9 +93,10 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
 // Generate password
 export async function generatePassword(length: number = 16): Promise<{ success: boolean; password?: string; message?: string }> {
     const url = `${API_BASE}/api/users/generate-password?length=${length}`;
-    const response = await fetch(url, {
+    const response = await fetchWithAuth(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
     });
     if (response.ok) {
         const data = await response.json();
@@ -111,10 +115,11 @@ export async function generatePassword(length: number = 16): Promise<{ success: 
 
 // Link Google account
 export async function linkGoogle(googleId: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/link-google`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/users/link-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(googleId)
+        body: JSON.stringify(googleId),
+        credentials: 'include'
     });
     if (response.ok) {
         return { success: true };
@@ -132,9 +137,10 @@ export async function linkGoogle(googleId: string): Promise<{ success: boolean; 
 
 // Unlink Google account
 export async function unlinkGoogle(): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/unlink-google`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/users/unlink-google`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
     });
     if (response.ok) {
         return { success: true };

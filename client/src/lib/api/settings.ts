@@ -1,10 +1,13 @@
+import { API_BASE } from "./config";
 import type { UserSettings } from '$lib/types';
+import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // Fetch current user's settings (preferences)
 export async function fetchUserSettings(): Promise<UserSettings> {
-	const response = await fetch('/api/user/preferences', {
+	const response = await fetchWithAuth(`${API_BASE}/api/user/preferences`, {
 		method: 'GET',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (!response.ok) {
 		throw new Error('Failed to fetch user settings');
@@ -14,10 +17,11 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
 // Update current user's settings (preferences)
 export async function updateUserSettings(settings: UserSettings): Promise<UserSettings> {
-	const response = await fetch('/api/user/preferences', {
+	const response = await fetchWithAuth(`${API_BASE}/api/user/preferences`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(settings)
+		body: JSON.stringify(settings),
+		credentials: 'include'
 	});
 	if (!response.ok) {
 		throw new Error('Failed to update user settings');
@@ -41,8 +45,8 @@ export async function generatePassword(options?: {
 		if (options.useNumbers !== undefined) params.append('useNumbers', String(options.useNumbers));
 		if (options.useSymbols !== undefined) params.append('useSymbols', String(options.useSymbols));
 	}
-	const url = '/api/user/preferences/generate-password' + (params.toString() ? `?${params.toString()}` : '');
-	const response = await fetch(url, {
+	const url = `${API_BASE}/api/user/preferences/generate-password` + (params.toString() ? `?${params.toString()}` : '');
+	const response = await fetchWithAuth(url, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' }
 	});

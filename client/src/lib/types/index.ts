@@ -1,22 +1,23 @@
 // Form validation utility for vault entry
 export type VaultEntryForm = {
-	siteName?: string;
-	url?: string;
-	username?: string;
+	site?: string;
+	siteUrl?: string;
+	email?: string;
 	password?: string;
 	notes?: string;
 };
 
 export type VaultEntryErrors = {
-	siteName?: string;
-	username?: string;
+	site?: string;
+	siteUrl?: string;
+	email?: string;
 	password?: string;
 };
 
 export type VaultEntry = {
-	siteName: string;
-	url?: string;
-	username: string;
+	site: string;
+	siteUrl?: string;
+	email: string;
 	password: string;
 	notes?: string;
 	[key: string]: string | undefined | unknown;
@@ -30,10 +31,10 @@ export type UserSettings = {
 
 // Dashboard vault item type
 export interface VaultItem {
-	id: number;
+	id: string;
 	siteName: string;
 	siteUrl: string;
-	username: string;
+	email: string;
 	password: string;
 	notes?: string;
 	createdAt: string;
@@ -48,4 +49,15 @@ export interface SupportRequest {
 	reason?: string;
 	status: string;
 	createdAt: string;
+}
+
+// Create a share invitation (by username or email)
+export interface ShareInvitation {
+	// Define the expected properties of a share invitation here
+	id: string;
+	to: string;
+	from: string;
+	status: string;
+	createdAt: string;
+	// Add other fields as needed
 }
