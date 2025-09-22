@@ -11,10 +11,10 @@ namespace Domurion.Services
         private readonly DataContext _context = context;
 
         #region Credntial Management
-        public Credential AddCredential(Guid userId, string site, string username, string password, string? notes = null, string? ipAddress = null)
+        public Credential AddCredential(Guid userId, string site, string? siteUrl, string email, string password, string? notes = null, string? ipAddress = null)
         {
-            if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("Site, username, and password are required.");
+            if (string.IsNullOrWhiteSpace(site) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Site, email, and password are required.");
 
             if (!Helper.IsStrongPassword(password))
                 throw new ArgumentException("Password does not meet strength requirements.");
@@ -28,7 +28,8 @@ namespace Domurion.Services
             {
                 UserId = userId,
                 Site = site,
-                Username = username,
+                SiteUrl = siteUrl ?? string.Empty,
+                Email = email,
                 EncryptedPassword = encryptedPassword,
                 IntegrityHash = integrityHash,
                 Notes = notes
@@ -37,7 +38,7 @@ namespace Domurion.Services
             _context.SaveChanges();
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credential.Id, "AddCredential", ipAddress, site);
+            AuditLogger.Log(_context, userId, user?.Email ?? string.Empty, credential.Id, "AddCredential", ipAddress, site);
             return credential;
         }
 
@@ -69,19 +70,21 @@ namespace Domurion.Services
                 throw new InvalidOperationException("Data integrity check failed.");
             // Audit log
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
-            AuditLogger.Log(_context, userId, user?.Username ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
+            AuditLogger.Log(_context, userId, user?.Email ?? string.Empty, credentialId, "RetrievePassword", ipAddress, credential.Site);
             return CryptoHelper.DecryptPassword(credential.EncryptedPassword);
         }
 
-        public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null, string? ipAddress = null)
+        public Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? siteUrl, string? email, string? password, string? notes = null, string? ipAddress = null)
         {
             var credential = _context.Credentials.FirstOrDefault(c => c.Id == credentialId && c.UserId == userId)
                 ?? throw new KeyNotFoundException("Credential not found.");
 
             if (site != null)
                 credential.Site = site;
-            if (username != null)
-                credential.Username = username;
+            if (siteUrl != null)
+                credential.SiteUrl = siteUrl;
+            if (email != null)
+                    credential.Email = email;
             if (password != null)
             {
                 if (!Helper.IsStrongPassword(password))

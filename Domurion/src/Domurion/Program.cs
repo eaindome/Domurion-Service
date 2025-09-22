@@ -18,15 +18,26 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("https://domurion-service.vercel.app")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+    options.AddPolicy("localhostCors", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PreferencesService>();
+builder.Services.AddScoped<IPreferencesService, PreferencesService>();
 builder.Services.AddScoped<PasswordVaultService>();
+builder.Services.AddScoped<IPasswordVaultService, PasswordVaultService>();
 builder.Services.AddScoped<Domurion.Helpers.EmailService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -97,25 +108,56 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-
-
 // Register global error handling middleware
 app.UseMiddleware<Domurion.Helpers.ErrorHandlingMiddleware>();
 
-// Use CORS before authentication/authorization
-app.UseCors("FrontendCors");
+// Custom middleware: extract JWT from cookie and set Authorization header
+app.Use(async (context, next) =>
+{
+    const string cookieName = "access_token";
+    if (context.Request.Cookies.ContainsKey(cookieName))
+    {
+        var token = context.Request.Cookies[cookieName];
+        if (!string.IsNullOrEmpty(token))
+        {
+            // Only set if not already present
+            if (!context.Request.Headers.ContainsKey("Authorization"))
+            {
+                context.Request.Headers.Authorization = $"Bearer {token}";
+            }
+        }
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseCors("localhostCors"); // for local development
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    app.UseCors("FrontendCors"); // for production
 }
 
 // Apply rate limiting globally; per-endpoint policies are set by endpoint metadata (e.g., [RateLimit] attribute in .NET 8+)
 
 app.UseRateLimiter();
 app.UseAuthentication();
+
+// custom middleware for 401 JSON response
+app.Use(async (context, next) =>
+{
+    await next();
+    if (context.Response.StatusCode == 401 && !context.Response.HasStarted)
+    {
+        context.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new { error = "Unauthorized access." });
+        await context.Response.WriteAsync(result);
+    }
+});
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

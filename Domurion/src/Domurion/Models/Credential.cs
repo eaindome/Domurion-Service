@@ -11,11 +11,15 @@ namespace Domurion.Models
             set => _site = value ?? throw new ArgumentNullException(nameof(Site));
         }
 
-        private string _username = string.Empty;
-        public string Username
+        public string SiteUrl { get; set; } = string.Empty;
+
+        public string Username { get; set; } = string.Empty;
+
+        private string _email = string.Empty;
+        public string Email
         {
-            get => _username;
-            set => _username = value ?? throw new ArgumentNullException(nameof(Username));
+            get => _email;
+            set => _email = value ?? throw new ArgumentNullException(nameof(Email));
         }
 
         private string _encryptedPassword = string.Empty;

@@ -15,13 +15,13 @@ namespace Domurion.Controllers
 
         [HttpPost("add")]
         [Authorize]
-        public IActionResult Add(Guid userId, string site, string username, string password, string? notes = null)
+        public IActionResult Add(Guid userId, string site, string email, string password, string? notes = null, string? siteUrl = null)
         {
             try
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-                var credential = _passwordVaultService.AddCredential(userId, site, username, password, notes, ip);
-                return Ok(new { credential.Id, credential.Site, credential.Username });
+                var credential = _passwordVaultService.AddCredential(userId, site, siteUrl, email, password, notes, ip);
+                return Ok(new { credential.Id, credential.Site, credential.Email, credential.SiteUrl });
             }
             catch (ArgumentException ex)
             {
@@ -34,7 +34,16 @@ namespace Domurion.Controllers
         public IActionResult List(Guid userId)
         {
             var credentials = _passwordVaultService.GetCredentials(userId)
-                .Select(c => new { c.Id, c.Site, c.Username });
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Site,
+                    c.Email,
+                    c.Notes,
+                    c.CreatedAt,
+                    c.UpdatedAt,
+                    Password = _passwordVaultService.RetrievePassword(c.Id, userId),
+                });
             return Ok(credentials);
         }
 
@@ -45,8 +54,19 @@ namespace Domurion.Controllers
             try
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var credential = _passwordVaultService.GetById(credentialId);
+                if (credential == null || credential.UserId != userId)
+                    return NotFound(new { error = "Credential not found." });
+
                 var password = _passwordVaultService.RetrievePassword(credentialId, userId, ip);
-                return Ok(new { Password = password });
+                return Ok(new {
+                    credential.Id,
+                    credential.Site,
+                    credential.SiteUrl,
+                    credential.Email,
+                    credential.Notes,
+                    Password = password
+                });
             }
             catch (KeyNotFoundException ex)
             {
@@ -56,13 +76,13 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null)
+        public IActionResult Update(Guid credentialId, Guid userId, string? site, string? email, string? password, string? notes = null, string? siteUrl = null)
         {
             try
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-                var credential = _passwordVaultService.UpdateCredential(credentialId, userId, site, username, password, notes, ip);
-                return Ok(new { credential.Id, credential.Site, credential.Username, credential.Notes });
+                var credential = _passwordVaultService.UpdateCredential(credentialId, userId, site, email, password, notes, siteUrl, ip);
+                return Ok(new { credential.Id, credential.Site, credential.SiteUrl, credential.Email, credential.Notes });
             }
             catch (KeyNotFoundException ex)
             {
@@ -142,12 +162,12 @@ namespace Domurion.Controllers
             {
                 try
                 {
-                    var c = _passwordVaultService.AddCredential(userId, cred.Site, cred.Username, cred.Password);
-                    imported.Add(new { c.Id, c.Site, c.Username });
+                    var c = _passwordVaultService.AddCredential(userId, cred.Site, cred.SiteUrl, cred.Username, cred.Password);
+                    imported.Add(new { c.Id, c.Site, c.Username, c.SiteUrl });
                 }
                 catch (Exception ex)
                 {
-                    imported.Add(new { cred.Site, cred.Username, error = ex.Message });
+                    imported.Add(new { cred.Site, cred.Username, cred.SiteUrl, error = ex.Message });
                 }
             }
             return Ok(imported);

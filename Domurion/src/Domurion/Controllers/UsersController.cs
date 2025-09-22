@@ -66,6 +66,7 @@ namespace Domurion.Controllers
             return Ok(new
             {
                 user.Id,
+                user.Email,
                 user.Username,
                 user.Name,
                 user.AuthProvider,

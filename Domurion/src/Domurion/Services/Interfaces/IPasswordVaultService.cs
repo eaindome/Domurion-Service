@@ -6,10 +6,10 @@ namespace Domurion.Services.Interfaces
 {
     public interface IPasswordVaultService
     {
-        Credential AddCredential(Guid userId, string site, string username, string password, string? notes = null, string? ipAddress = null);
+        Credential AddCredential(Guid userId, string site, string? siteUrl, string email, string password, string? notes = null, string? ipAddress = null);
         IEnumerable<Credential> GetCredentials(Guid userId);
         string RetrievePassword(Guid credentialId, Guid userId, string? ipAddress = null);
-        Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? username, string? password, string? notes = null, string? ipAddress = null);
+        Credential UpdateCredential(Guid credentialId, Guid userId, string? site, string? siteUrl, string? email, string? password, string? notes = null, string? ipAddress = null);
         void DeleteCredential(Guid credentialId, Guid userId, string? ipAddress = null);
         Credential? GetById(Guid credentialId);
 
