@@ -38,6 +38,8 @@ namespace Domurion.Services
             prefs.AutoSaveEntries = updated.AutoSaveEntries;
             prefs.ShowPasswordStrength = updated.ShowPasswordStrength;
             prefs.SessionTimeoutMinutes = updated.SessionTimeoutMinutes;
+            prefs.AutoLockEnabled = updated.AutoLockEnabled;
+            prefs.LoginNotificationsEnabled = updated.LoginNotificationsEnabled;
             _context.SaveChanges();
             return prefs;
         }
