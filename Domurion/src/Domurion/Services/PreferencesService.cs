@@ -4,13 +4,9 @@ using Domurion.Data;
 
 namespace Domurion.Services
 {
-    public class PreferencesService : IPreferencesService
+    public class PreferencesService(DataContext context) : IPreferencesService
     {
-        private readonly DataContext _context;
-        public PreferencesService(DataContext context)
-        {
-            _context = context;
-        }
+        private readonly DataContext _context = context;
 
         public UserPreferences GetPreferences(Guid userId)
         {
