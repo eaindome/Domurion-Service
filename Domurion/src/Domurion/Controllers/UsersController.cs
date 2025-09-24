@@ -77,14 +77,18 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
+        public IActionResult Update(string? newUsername, string? newPassword)
         {
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized(new { message = "User not found." });
+                
                 // Accept name as an optional query parameter for update
                 var name = Request.Query["name"].ToString();
                 if (string.IsNullOrWhiteSpace(name)) name = null;
-                var user = _userService.UpdateUser(userId, newUsername, newPassword, name);
+                var user = _userService.UpdateUser(Guid.Parse(userId), newUsername, newPassword, name);
                 return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (KeyNotFoundException ex)
@@ -103,11 +107,14 @@ namespace Domurion.Controllers
 
         [HttpDelete("delete")]
         [Authorize]
-        public IActionResult Delete(Guid userId)
+        public IActionResult Delete()
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User not found." });
             try
             {
-                _userService.DeleteUser(userId);
+                _userService.DeleteUser(Guid.Parse(userId));
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
