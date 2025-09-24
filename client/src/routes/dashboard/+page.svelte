@@ -1,17 +1,16 @@
 <script lang="ts">
 	// eslint-disable-next-line svelte/no-navigation-without-resolve
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '$lib/stores/toast';
 	import navLogo from '$lib/assets/navLogo.png';
 	import { authStore } from '$lib/stores/authStore';
+	import { browser } from '$app/environment';
 
 	import VaultItemRow from '$lib/components/VaultItemRow.svelte';
 	import type { VaultItem } from '$lib/types';
 
 	import { listVaultEntries, deleteVaultEntry } from '$lib/api/vault';
-	// Import mockVaultItems for UI testing fallback
-	import { mockVaultItems } from '$lib/api/mock';
 
 	// Vault items will be loaded from API
 	let vaultItems: VaultItem[] = [];
@@ -55,43 +54,23 @@
 			item.siteUrl.toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
-	let unsubscribe: () => void;
-	let isAuthReady = false;
+	$: isAuthenticated = $authStore.isAuthenticated;
+	$: isLoadingAuth = $authStore.loading;
 
-	onMount(async () => {
-		// Subscribe to authStore and extract user info
-		unsubscribe = authStore.subscribe((state) => {
-			// console.log('Auth state changed:', state);
-			if (state.loading) return;
-			if (state && state.user) {
-				user = {
-					email: state.user.email || '',
-					name: state.user.name || '',
-					id: state.user.id || '',
-					username: state.user.username || ''
-				};
-				isAuthReady = true;
-				loadVaultItems();
-			} else {
-				isAuthReady = false;
-			}
-		});
-	});
-
-	onDestroy(() => {
-		if (unsubscribe) unsubscribe();
-	});
+	$: if (!isLoadingAuth && isAuthenticated) {
+	    loadVaultItems();
+	}
 
 	async function loadVaultItems() {
-		if (!isAuthReady) return;
 		isLoading = true;
 		try {
-			if (!user.id) {
+			if (!$authStore.user?.id) {
+				console.log(`User data:`, $authStore.user);
 				toast.show('User not authenticated', 'error');
 				return;
 			}
-			console.log(`Loading vault items for user ID: ${user.id}`);
-			const result = await listVaultEntries(user.id);
+			console.log(`Loading vault items for user ID: ${$authStore.user.id}`);
+			const result = await listVaultEntries($authStore.user.id);
 			console.log(`Vault items loaded:`, result);
 			if (result.success && result.entries) {
 				vaultItems = result.entries.map((entry) => ({
@@ -179,356 +158,364 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<!-- Navigation Header -->
-	<nav class="border-b border-gray-100 bg-white shadow-sm">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<div class="flex h-16 items-center justify-between">
-				<!-- Logo and Brand -->
-				<div class="flex items-center">
-					<div class="flex items-center justify-center h-16">
-						<img src={navLogo} alt="Domurion Logo" class="max-h-32 max-w-32 rounded-lg" />
-					</div>
-				</div>
-
-				<!-- User Menu -->
-				<div class="flex items-center space-x-6">
-					<!-- Welcome message with better typography -->
-					<div class="hidden items-center sm:flex">
-						<span class="text-sm font-medium text-gray-600">Welcome back,</span>
-						<span class="ml-1 text-sm font-semibold text-gray-900">{user.username}</span>
+	{#if $authStore.loading}
+		<!-- Blocked by layout spinner -->
+	{:else if !$authStore.isAuthenticated}
+		<!-- Redirection -->
+	{:else}
+		<!-- Navigation Header -->
+		<nav class="border-b border-gray-100 bg-white shadow-sm">
+			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+				<div class="flex h-16 items-center justify-between">
+					<!-- Logo and Brand -->
+					<div class="flex items-center">
+						<div class="flex items-center justify-center h-16">
+							<img src={navLogo} alt="Domurion Logo" class="max-h-32 max-w-32 rounded-lg" />
+						</div>
 					</div>
 
-					<!-- User dropdown with enhanced design -->
-							<div class="relative" bind:this={userMenuRef}>
-								<button
-									bind:this={userMenuButtonRef}
-									class="group flex items-center space-x-2 rounded-xl p-1 transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
-									aria-haspopup="true"
-									aria-expanded={showUserMenu}
-									aria-label="User menu"
-									on:click={() => (showUserMenu = !showUserMenu)}
-								>
-							<!-- Avatar with status indicator -->
-							<div class="relative">
-								<div
-									class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white"
-								>
-									<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
-								</div>
-								<!-- Online status indicator -->
-								<div
-									class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"
-								></div>
-							</div>
+					<!-- User Menu -->
+					<div class="flex items-center space-x-6">
+						<!-- Welcome message with better typography -->
+						<div class="hidden items-center sm:flex">
+							<span class="text-sm font-medium text-gray-600">Welcome back,</span>
+							<span class="ml-1 text-sm font-semibold text-gray-900">{$authStore.user?.username}</span>
+						</div>
 
-							<!-- Chevron with smooth rotation -->
-							<svg
-								class="h-4 w-4 text-gray-400 transition-all duration-200 group-hover:text-gray-600 {showUserMenu
-									? 'rotate-180'
-									: 'rotate-0'}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/>
-							</svg>
-						</button>
-
-						<!-- Enhanced dropdown menu -->
-						{#if showUserMenu}
-							<div
-								class="animate-menu-enter absolute right-0 z-50 mt-3 w-56 rounded-2xl border border-gray-200 bg-white py-2 shadow-xl"
-							>
-								<!-- User info section -->
-								<div class="border-b border-gray-100 px-4 py-3">
-									<div class="flex items-center space-x-3">
-										<div
-											class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600"
-										>
-											<span class="font-semibold text-white">{user.username.charAt(0)}</span>
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
-											<p class="truncate text-xs text-gray-500">
-												{user.email || 'user@example.com'}
-											</p>
-										</div>
+						<!-- User dropdown with enhanced design -->
+								<div class="relative" bind:this={userMenuRef}>
+									<button
+										bind:this={userMenuButtonRef}
+										class="group flex items-center space-x-2 rounded-xl p-1 transition-all duration-200 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
+										aria-haspopup="true"
+										aria-expanded={showUserMenu}
+										aria-label="User menu"
+										on:click={() => (showUserMenu = !showUserMenu)}
+									>
+								<!-- Avatar with status indicator -->
+								<div class="relative">
+									<div
+										class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white"
+									>
+										<span class="text-sm font-semibold text-white">
+											{$authStore.user?.username ? $authStore.user.username.charAt(0) : ''}
+										</span>
 									</div>
+									<!-- Online status indicator -->
+									<div
+										class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"
+									></div>
 								</div>
 
-								<!-- Menu items -->
-								<div class="py-1">
-									<button
-										type="button"
-										class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-700"
-										on:mousedown={handleSettingsClick}
-									>
-										<svg
-											class="mr-3 h-4 w-4 text-indigo-500 group-hover:text-indigo-600"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-											/>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-											/>
-										</svg>
-										<span>Account Settings</span>
-									</button>
-
-									<button
-										type="button"
-										class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-gray-50"
-										on:mousedown={handleHelpClick}
-									>
-										<svg
-											class="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-											/>
-										</svg>
-										<span>Help & Support</span>
-									</button>
-								</div>
-
-								<!-- Separator -->
-								<div class="my-1 border-t border-gray-100"></div>
-
-								<!-- Sign out button -->
-								<button
-									on:click={() => {
-										showUserMenu = false;
-										logout();
-									}}
-									class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-red-50 hover:text-red-600"
-									tabindex="0"
+								<!-- Chevron with smooth rotation -->
+								<svg
+									class="h-4 w-4 text-gray-400 transition-all duration-200 group-hover:text-gray-600 {showUserMenu
+										? 'rotate-180'
+										: 'rotate-0'}"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
 								>
-									<svg
-										class="mr-3 h-4 w-4 text-red-500 group-hover:text-red-600"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M17 16l4-4m0 0l-4-4m4 4H7m10 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h8a3 3 0 013 3v1"
-										/>
-									</svg>
-									<span>Sign Out</span>
-								</button>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		</div>
-	</nav>
-
-	<style>
-		/* Enhanced menu animations */
-		@keyframes menu-enter {
-			from {
-				opacity: 0;
-				transform: translateY(-8px) scale(0.95);
-			}
-			to {
-				opacity: 1;
-				transform: translateY(0) scale(1);
-			}
-		}
-
-		.animate-menu-enter {
-			animation: menu-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-			transform-origin: top right;
-		}
-
-		/* Smooth transitions for interactive elements */
-		.group:hover .group-hover\:text-indigo-600 {
-			transition-property: color;
-			transition-duration: 150ms;
-			transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-		}
-
-		/* Custom scrollbar for long user names/emails */
-		.truncate {
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-	</style>
-
-	<!-- Main Content -->
-	<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
-		<!-- Header Section -->
-		<div class="px-4 sm:px-0">
-			<div class="mb-8 flex items-center justify-between">
-				<div>
-					<h1 class="text-3xl font-semibold text-gray-900">Your Vault</h1>
-					<p class="mt-2 text-gray-600">Manage your passwords and credentials securely</p>
-				</div>
-				<div class="flex flex-col sm:flex-row gap-2">
-					<a
-						href={'/vault/shared'}
-						class="inline-flex items-center rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 transition-all duration-200 hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
-					>
-						<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 8a3 3 0 11-6 0 3 3 0 016 0zm6 8a6 6 0 00-12 0v1a3 3 0 003 3h6a3 3 0 003-3v-1z"/>
-						</svg>
-						Shared With Me
-					</a>
-					<a
-						href={'/vault/add'}
-						class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
-					>
-						<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-							/>
-						</svg>
-						Add New Entry
-					</a>
-				</div>
-			</div>
-
-			<!-- Search and Stats -->
-			<div class="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-				<div
-					class="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0"
-				>
-					<!-- Search Bar -->
-					<div class="relative max-w-md flex-1">
-						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-							<svg
-								class="h-5 w-5 text-gray-400"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-								/>
-							</svg>
-						</div>
-						<input
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search your vault..."
-							class="block w-full rounded-xl border border-gray-200 py-2.5 pr-3 pl-10 text-sm focus:border-transparent focus:ring-2 focus:ring-indigo-500"
-						/>
-					</div>
-
-					<!-- Stats -->
-					<div class="flex items-center space-x-6 text-sm text-gray-600">
-						<div class="flex items-center">
-							<div class="mr-2 h-2 w-2 rounded-full bg-indigo-500"></div>
-							<span>{vaultItems.length} total entries</span>
-						</div>
-						<div class="flex items-center">
-							<div class="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
-							<span>{filteredItems.length} shown</span>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Vault Items -->
-		<div class="px-4 sm:px-0">
-			{#if isLoading}
-				<div class="rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
-					<div class="text-center">
-						<div
-							class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
-						></div>
-						<p class="mt-4 text-gray-600">Loading your vault...</p>
-					</div>
-				</div>
-			{:else if filteredItems.length === 0}
-				<div class="rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
-					<div class="text-center">
-						<svg
-							class="mx-auto mb-4 h-16 w-16 text-gray-400"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-							/>
-						</svg>
-						<h3 class="mb-2 text-lg font-medium text-gray-900">
-							{searchQuery ? 'No matching entries' : 'Your vault is empty'}
-						</h3>
-						<p class="mb-6 text-gray-600">
-							{searchQuery
-								? 'Try adjusting your search terms'
-								: 'Start by adding your first password entry'}
-						</p>
-						{#if !searchQuery}
-							<a
-								href={'/vault/add'}
-								class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-							>
-								<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
 										stroke-width="2"
-										d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+										d="M19 9l-7 7-7-7"
 									/>
 								</svg>
-								Add Your First Entry
-							</a>
-						{/if}
+							</button>
+
+							<!-- Enhanced dropdown menu -->
+							{#if showUserMenu}
+								<div
+									class="animate-menu-enter absolute right-0 z-50 mt-3 w-56 rounded-2xl border border-gray-200 bg-white py-2 shadow-xl"
+								>
+									<!-- User info section -->
+									<div class="border-b border-gray-100 px-4 py-3">
+										<div class="flex items-center space-x-3">
+											<div
+												class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600"
+											>
+												<span class="font-semibold text-white">{$authStore.user?.username?.charAt(0) ?? ''}</span>
+											</div>
+											<div class="min-w-0 flex-1">
+												<p class="truncate text-sm font-semibold text-gray-900">{$authStore.user?.username}</p>
+												<p class="truncate text-xs text-gray-500">
+													{$authStore.user?.email || 'user@example.com'}
+												</p>
+											</div>
+										</div>
+									</div>
+
+									<!-- Menu items -->
+									<div class="py-1">
+										<button
+											type="button"
+											class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-700"
+											on:mousedown={handleSettingsClick}
+										>
+											<svg
+												class="mr-3 h-4 w-4 text-indigo-500 group-hover:text-indigo-600"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+												/>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+												/>
+											</svg>
+											<span>Account Settings</span>
+										</button>
+
+										<button
+											type="button"
+											class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-gray-50"
+											on:mousedown={handleHelpClick}
+										>
+											<svg
+												class="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-600"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+												/>
+											</svg>
+											<span>Help & Support</span>
+										</button>
+									</div>
+
+									<!-- Separator -->
+									<div class="my-1 border-t border-gray-100"></div>
+
+									<!-- Sign out button -->
+									<button
+										on:click={() => {
+											showUserMenu = false;
+											logout();
+										}}
+										class="group flex w-full items-center px-4 py-3 text-sm text-gray-700 transition-all duration-150 hover:bg-red-50 hover:text-red-600"
+										tabindex="0"
+									>
+										<svg
+											class="mr-3 h-4 w-4 text-red-500 group-hover:text-red-600"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M17 16l4-4m0 0l-4-4m4 4H7m10 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h8a3 3 0 013 3v1"
+											/>
+										</svg>
+										<span>Sign Out</span>
+									</button>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
-			{:else}
-				<div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-					<div class="divide-y divide-gray-100">
-						{#each filteredItems as item (item.id)}
-							<VaultItemRow
-								{item}
-								on:copy={(e) => copyToClipboard(e.detail.value, e.detail.type)}
-								on:delete={() => confirmDelete(item)}
+			</div>
+		</nav>
+
+		<style>
+			/* Enhanced menu animations */
+			@keyframes menu-enter {
+				from {
+					opacity: 0;
+					transform: translateY(-8px) scale(0.95);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0) scale(1);
+				}
+			}
+
+			.animate-menu-enter {
+				animation: menu-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+				transform-origin: top right;
+			}
+
+			/* Smooth transitions for interactive elements */
+			.group:hover .group-hover\:text-indigo-600 {
+				transition-property: color;
+				transition-duration: 150ms;
+				transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+			}
+
+			/* Custom scrollbar for long user names/emails */
+			.truncate {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+		</style>
+
+		<!-- Main Content -->
+		<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+			<!-- Header Section -->
+			<div class="px-4 sm:px-0">
+				<div class="mb-8 flex items-center justify-between">
+					<div>
+						<h1 class="text-3xl font-semibold text-gray-900">Your Vault</h1>
+						<p class="mt-2 text-gray-600">Manage your passwords and credentials securely</p>
+					</div>
+					<div class="flex flex-col sm:flex-row gap-2">
+						<a
+							href={'/vault/shared'}
+							class="inline-flex items-center rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 transition-all duration-200 hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+						>
+							<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 8a3 3 0 11-6 0 3 3 0 016 0zm6 8a6 6 0 00-12 0v1a3 3 0 003 3h6a3 3 0 003-3v-1z"/>
+							</svg>
+							Shared With Me
+						</a>
+						<a
+							href={'/vault/add'}
+							class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+						>
+							<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+								/>
+							</svg>
+							Add New Entry
+						</a>
+					</div>
+				</div>
+
+				<!-- Search and Stats -->
+				<div class="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+					<div
+						class="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0"
+					>
+						<!-- Search Bar -->
+						<div class="relative max-w-md flex-1">
+							<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+								<svg
+									class="h-5 w-5 text-gray-400"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
+								</svg>
+							</div>
+							<input
+								type="text"
+								bind:value={searchQuery}
+								placeholder="Search your vault..."
+								class="block w-full rounded-xl border border-gray-200 py-2.5 pr-3 pl-10 text-sm focus:border-transparent focus:ring-2 focus:ring-indigo-500"
 							/>
-						{/each}
+						</div>
+
+						<!-- Stats -->
+						<div class="flex items-center space-x-6 text-sm text-gray-600">
+							<div class="flex items-center">
+								<div class="mr-2 h-2 w-2 rounded-full bg-indigo-500"></div>
+								<span>{vaultItems.length} total entries</span>
+							</div>
+							<div class="flex items-center">
+								<div class="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
+								<span>{filteredItems.length} shown</span>
+							</div>
+						</div>
 					</div>
 				</div>
-			{/if}
+			</div>
+
+			<!-- Vault Items -->
+			<div class="px-4 sm:px-0">
+				{#if isLoading}
+					<div class="rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
+						<div class="text-center">
+							<div
+								class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
+							></div>
+							<p class="mt-4 text-gray-600">Loading your vault...</p>
+						</div>
+					</div>
+				{:else if filteredItems.length === 0}
+					<div class="rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
+						<div class="text-center">
+							<svg
+								class="mx-auto mb-4 h-16 w-16 text-gray-400"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+								/>
+							</svg>
+							<h3 class="mb-2 text-lg font-medium text-gray-900">
+								{searchQuery ? 'No matching entries' : 'Your vault is empty'}
+							</h3>
+							<p class="mb-6 text-gray-600">
+								{searchQuery
+									? 'Try adjusting your search terms'
+									: 'Start by adding your first password entry'}
+							</p>
+							{#if !searchQuery}
+								<a
+									href={'/vault/add'}
+									class="inline-flex items-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+								>
+									<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+										/>
+									</svg>
+									Add Your First Entry
+								</a>
+							{/if}
+						</div>
+					</div>
+				{:else}
+					<div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+						<div class="divide-y divide-gray-100">
+							{#each filteredItems as item (item.id)}
+								<VaultItemRow
+									{item}
+									on:copy={(e) => copyToClipboard(e.detail.value, e.detail.type)}
+									on:delete={() => confirmDelete(item)}
+								/>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>
 
 <!-- Delete Confirmation Modal -->
@@ -606,11 +593,3 @@
 	}
 </style>
 
-{#if !isAuthReady}
-	<div class="flex min-h-screen items-center justify-center">
-		<svg class="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24">
-			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-		</svg>
-	</div>
-{/if}

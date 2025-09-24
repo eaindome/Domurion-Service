@@ -10,7 +10,11 @@
 
     let sharedItems: VaultItem[] = [];
     let isLoading = false;
-    let user = { email: '', name: '', id: '' };
+    $: user = {
+		email: $authStore.user?.email || '',
+		username: $authStore.user?.username || '',
+		id: $authStore.user?.id || ''
+	};
 
     // User menu dropdown state
     let showUserMenu = false;
@@ -18,19 +22,9 @@
         setTimeout(() => (showUserMenu = false), 120);
     }
 
-    onMount(async () => {
-        const unsubscribe = authStore.subscribe((state) => {
-            if (state && state.user) {
-                user = {
-                    email: state.user.email || '',
-                    name: state.user.name || '',
-                    id: state.user.id || ''
-                };
-            }
-        });
-        await loadSharedItems();
-        unsubscribe();
-    });
+    $: if (user.id) {
+		loadSharedItems();
+	}
 
     async function loadSharedItems() {
         isLoading = true;
@@ -38,10 +32,11 @@
             const result = await listSharedVaultEntries(user.id);
 			if (result.success && result.entries) {
 				sharedItems = result.entries.map((entry) => ({
-					id: Number(entry.id),
-					siteName: entry.siteName,
-					username: entry.username,
-					password: entry.password,
+					id: String(entry.id),
+					siteName: String(entry.siteName),
+					email: String(entry.email),
+					username: String(entry.username),
+					password: String(entry.password),
 					siteUrl: String(entry.siteUrl ?? ''),
 					createdAt: String(entry.createdAt ?? ''),
 					updatedAt: String(entry.updatedAt ?? '')
@@ -71,7 +66,8 @@
 	}
 
 	function logout() {
-		// TODO: Clear auth store and redirect
+		authStore.logout();
+		document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 		goto('/login');
 	}
 </script>
@@ -105,7 +101,7 @@
 						>
 							<div class="relative">
 								<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white">
-									<span class="text-sm font-semibold text-white">{user.name.charAt(0)}</span>
+									<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
 								</div>
 								<div class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"></div>
 							</div>
@@ -123,10 +119,10 @@
 								<div class="border-b border-gray-100 px-4 py-3">
 									<div class="flex items-center space-x-3">
 										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600">
-											<span class="font-semibold text-white">{user.name.charAt(0)}</span>
+											<span class="font-semibold text-white">{user.username.charAt(0)}</span>
 										</div>
 										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
+											<p class="truncate text-sm font-semibold text-gray-900">{user.username}</p>
 											<p class="truncate text-xs text-gray-500">{user.email || 'user@example.com'}</p>
 										</div>
 									</div>
@@ -202,7 +198,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <div class="font-semibold text-gray-900">{item.siteName}</div>
-                                    <div class="text-xs text-gray-500">{item.username}</div>
+                                    <!-- <div class="text-xs text-gray-500">{item.name}</div> -->
                                 </div>
                                 <!-- <div class="text-xs text-gray-400">Shared by: {item.sharedBy || 'Unknown'}</div> -->
                             </div>

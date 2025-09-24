@@ -9,15 +9,7 @@
 	import VaultEntryForm from '$lib/components/VaultEntryForm.svelte';
 	import { authStore } from '../../../../lib/stores/authStore';
 
-	let userId = '';
-	const unsubscribe = authStore.subscribe((state) => {
-		if (state.user) userId = state.user.id;
-	});
-	
-	// Cleanup subscription on component destroy
-	onDestroy(() => {
-		unsubscribe();
-	});
+	$: userId = $authStore.user?.id ?? '';
 
 	// Get entry ID from URL params
 	$: entryId = $page.params.id ?? '';
