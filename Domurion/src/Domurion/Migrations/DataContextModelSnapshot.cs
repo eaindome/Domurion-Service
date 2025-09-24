@@ -278,7 +278,13 @@ namespace Domurion.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AutoLockEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("AutoSaveEntries")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LoginNotificationsEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<int>("PasswordLength")
