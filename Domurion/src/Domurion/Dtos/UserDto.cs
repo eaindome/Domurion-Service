@@ -7,4 +7,11 @@ namespace Domurion.Dtos
         public string? Name { get; set; }
         public string? Username { get; set; }
     }
+
+    public class UpdateUserDto
+    {
+        public string? NewUsername { get; set; }
+        public string? NewPassword { get; set; }
+        public string? Name { get; set; }
+    }
 }
