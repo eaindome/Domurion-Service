@@ -77,7 +77,7 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update(string? newUsername, string? newPassword)
+        public IActionResult Update([FromBody] UpdateUserDto updateUserDto)
         {
             try
             {
@@ -85,10 +85,7 @@ namespace Domurion.Controllers
                 if (string.IsNullOrEmpty(userId))
                     return Unauthorized(new { message = "User not found." });
                 
-                // Accept name as an optional query parameter for update
-                var name = Request.Query["name"].ToString();
-                if (string.IsNullOrWhiteSpace(name)) name = null;
-                var user = _userService.UpdateUser(Guid.Parse(userId), newUsername, newPassword, name);
+                var user = _userService.UpdateUser(Guid.Parse(userId), updateUserDto.NewUsername, updateUserDto.NewPassword, updateUserDto.Name);
                 return Ok(new { user.Id, user.Username, user.Name });
             }
             catch (KeyNotFoundException ex)
@@ -411,7 +408,7 @@ namespace Domurion.Controllers
 
         #region Helpers
         // Private helper for login notification email
-        private async Task SendLoginNotificationEmailAsync(Domurion.Models.User user, string subject)
+        private async Task SendLoginNotificationEmailAsync(Models.User user, string subject)
         {
             try
             {
