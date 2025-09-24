@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Domurion.Services;
 using System.Text.Json;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
 namespace Domurion.Controllers
 {
@@ -69,6 +71,7 @@ namespace Domurion.Controllers
                 user.Email,
                 user.Username,
                 user.Name,
+                user.ProfilePictureUrl,
                 user.AuthProvider,
                 user.GoogleId,
                 user.TwoFactorEnabled
@@ -77,7 +80,7 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update([FromBody] UpdateUserDto updateUserDto)
+        public async Task<IActionResult> Update([FromForm] UpdateUserDto updateUserDto, IFormFile? profilePicture)
         {
             try
             {
@@ -86,7 +89,34 @@ namespace Domurion.Controllers
                     return Unauthorized(new { message = "User not found." });
                 
                 var user = _userService.UpdateUser(Guid.Parse(userId), updateUserDto.NewUsername, updateUserDto.NewPassword, updateUserDto.Name);
-                return Ok(new { user.Id, user.Username, user.Name });
+                if (profilePicture != null && profilePicture.Length > 0)
+                {
+                // Cloudinary configuration (use your actual credentials)
+                var cloudinary = new Cloudinary(new Account(
+                    Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME"),
+                    Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY"),
+                    Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")
+                ));
+
+                // Upload to Cloudinary
+                var uploadParams = new ImageUploadParams()
+                {
+                    File = new FileDescription(profilePicture.FileName, profilePicture.OpenReadStream()),
+                    PublicId = $"profile_pictures/{Guid.NewGuid()}"
+                };
+                var uploadResult = await cloudinary.UploadAsync(uploadParams);
+
+                if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    user.ProfilePictureUrl = uploadResult.SecureUrl.ToString();
+                    _userService.Save(user);
+                }
+                else
+                {
+                    return BadRequest(new { error = "Failed to upload profile picture." });
+                }
+            }
+                return Ok(new { user.Id, user.Username, user.Name, user.ProfilePictureUrl });
             }
             catch (KeyNotFoundException ex)
             {
@@ -119,6 +149,37 @@ namespace Domurion.Controllers
                 return NotFound(new { error = ex.Message });
             }
         }
+
+        // Incase I'd ever need it
+        // [HttpPost("profile-picture")]
+        // [Authorize]
+        // public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+        // {
+        //     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //     if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
+
+        //     if (file == null || file.Length == 0)
+        //         return BadRequest(new { error = "No file uploaded." });
+
+        //     // Save file to wwwroot/uploads (ensure this folder exists and is writable)
+        //     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        //     Directory.CreateDirectory(uploadsFolder);
+        //     var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        //     var filePath = Path.Combine(uploadsFolder, fileName);
+
+        //     using (var stream = new FileStream(filePath, FileMode.Create))
+        //     {
+        //         await file.CopyToAsync(stream);
+        //     }
+
+        //     // Update user profile picture URL
+        //     var user = _userService.GetById(Guid.Parse(userId));
+        //     if (user == null) return NotFound(new { error = "User not found." });
+        //     user.ProfilePictureUrl = $"/uploads/{fileName}";
+        //     _userService.Save(user);
+
+        //     return Ok(new { url = user.ProfilePictureUrl });
+        // }
         #endregion
 
         #region Authentications
@@ -368,15 +429,15 @@ namespace Domurion.Controllers
         }
         #endregion
 
-        #region Password generation
-        [HttpGet("generate-password")]
-        [Authorize]
-        public IActionResult GeneratePassword([FromQuery] int length = 16)
-        {
-            var password = Helper.GeneratePassword(length);
-            return Ok(new { password });
-        }
-        #endregion
+        // #region Password generation
+        // [HttpGet("generate-password")]
+        // [Authorize]
+        // public IActionResult GeneratePassword([FromQuery] int length = 16)
+        // {
+        //     var password = Helper.GeneratePassword(length);
+        //     return Ok(new { password });
+        // }
+        // #endregion
 
         #region Linking accounts
         [HttpPost("link-google")]
