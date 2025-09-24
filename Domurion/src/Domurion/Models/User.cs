@@ -21,6 +21,8 @@ namespace Domurion.Models
             set => _passwordHash = value ?? throw new ArgumentNullException(nameof(PasswordHash));
         }
 
+        public string? ProfilePictureUrl { get; set; }
+
         public string? AuthProvider { get; set; }
 
         // For account linking: store Google unique ID if linked

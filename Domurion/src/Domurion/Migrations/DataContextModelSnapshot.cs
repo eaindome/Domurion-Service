@@ -248,6 +248,9 @@ namespace Domurion.Migrations
                     b.Property<DateTime?>("PendingOtpExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ProfilePictureUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
