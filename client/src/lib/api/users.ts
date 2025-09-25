@@ -93,29 +93,6 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
     }
 }
 
-// Generate password
-export async function generatePassword(length: number = 16): Promise<{ success: boolean; password?: string; message?: string }> {
-    const url = `${API_BASE}/api/users/generate-password?length=${length}`;
-    const response = await fetchWithAuth(url, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
-    });
-    if (response.ok) {
-        const data = await response.json();
-        return { success: true, password: data.password };
-    } else {
-        let errorMsg = 'Unknown error';
-        try {
-            const data = await response.json();
-            errorMsg = data.error || data.message || errorMsg;
-        } catch (err) {
-            console.log(`Error generating password: ${err}`);
-        }
-        return { success: false, message: errorMsg };
-    }
-}
-
 // Link Google account
 export async function linkGoogle(googleId: string): Promise<{ success: boolean; message?: string }> {
     const response = await fetchWithAuth(`${API_BASE}/api/users/link-google`, {
