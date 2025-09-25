@@ -24,7 +24,12 @@ export function handleGoogleOAuthRedirect() {
     return token;
 }
 
-export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string, username?: string }; message?: string }> {
+export async function login(email: string, password: string): Promise<{ 
+    success: boolean; 
+    user?: { id: string; email: string; name?: string, username?: string }; 
+    message?: string; 
+    twoFactorRequired?: boolean; 
+}> {
     let response;
     try {
         response = await fetchWithAuth(`${API_BASE}/api/users/login`, {
@@ -56,13 +61,15 @@ export async function login(email: string, password: string): Promise<{ success:
         }
     } else {
         let errorMsg = 'Unknown error';
+        let twoFactorRequired = false;
         try {
             const data = await response.json();
-            errorMsg = data.message || errorMsg;
+            errorMsg = data.error || data.message || errorMsg;
+            twoFactorRequired = data.twoFactorRequired || false;
         } catch (err) {
             console.log(`Error logging in: ${err}`);
         }
-        return { success: false, message: errorMsg };
+        return { success: false, message: errorMsg, twoFactorRequired };
     }
 }
 
@@ -92,6 +99,102 @@ export async function register(email: string, password: string, name?: string): 
             errorMsg = data.message || errorMsg;
         } catch (err) {
             console.log(`Error registering: ${err}`);
+        }
+        return { success: false, message: errorMsg };
+    }
+}
+
+export async function verifyOtp(email: string, otp: string): Promise<{ 
+    success: boolean; 
+    user?: { id: string; email: string; name?: string; username?: string }; 
+    message?: string; 
+}> {
+    let response;
+    try {
+        response = await fetchWithAuth(`${API_BASE}/api/users/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp })
+        });
+    } catch (err) {
+        console.log(`Error during OTP verification fetch: ${err}`);
+        return { success: false, message: 'Network error during OTP verification' };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'Unexpected response from server.' };
+    }
+
+    if (response.ok) {
+        try {
+            const data = await response.json();
+            if (data.token) {
+                setTokenCookie(data.token);
+            }
+            return { 
+                success: true, 
+                user: { 
+                    id: data.id, 
+                    email: email, 
+                    username: data.username 
+                } 
+            };
+        } catch (err) {
+            console.log(`Error parsing OTP verification response: ${err}`);
+            return { success: false, message: 'Error processing server response' };
+        }
+    } else {
+        let errorMsg = 'Unknown error';
+        try {
+            const data = await response.json();
+            errorMsg = data.error || data.message || errorMsg;
+        } catch (err) {
+            console.log(`Error verifying OTP: ${err}`);
+        }
+        return { success: false, message: errorMsg };
+    }
+}
+
+export async function resendOtp(email: string): Promise<{ 
+    success: boolean; 
+    message?: string; 
+}> {
+    let response;
+    try {
+        response = await fetchWithAuth(`${API_BASE}/api/users/resend-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(email)
+        });
+    } catch (err) {
+        console.log(`Error during resend OTP fetch: ${err}`);
+        return { success: false, message: 'Network error during OTP resend' };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'Unexpected response from server.' };
+    }
+
+    if (response.ok) {
+        try {
+            const data = await response.json();
+            return { 
+                success: true, 
+                message: data.message || 'OTP sent to your email.' 
+            };
+        } catch (err) {
+            console.log(`Error parsing resend OTP response: ${err}`);
+            return { success: true, message: 'OTP sent to your email.' };
+        }
+    } else {
+        let errorMsg = 'Unknown error';
+        try {
+            const data = await response.json();
+            errorMsg = data.error || data.message || errorMsg;
+        } catch (err) {
+            console.log(`Error resending OTP: ${err}`);
         }
         return { success: false, message: errorMsg };
     }
