@@ -30,6 +30,13 @@
 				await new Promise(res => setTimeout(res, 2000));
 				window.location.href = '/dashboard';
 			} else {
+				// Check if 2FA is required
+				if (response.twoFactorRequired) {
+					toast.show('OTP sent to your email', 'info');
+					// Redirect to OTP verification page with email parameter
+					goto(`/otp?email=${encodeURIComponent(email)}`);
+					return;
+				}
 				error = response.message || 'Login failed';
 				authStore.setError(error);
 			}
