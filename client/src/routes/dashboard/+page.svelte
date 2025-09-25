@@ -195,11 +195,30 @@
 								<!-- Avatar with status indicator -->
 								<div class="relative">
 									<div
-										class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white"
+										class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white overflow-hidden"
 									>
-										<span class="text-sm font-semibold text-white">
-											{$authStore.user?.username ? $authStore.user.username.charAt(0) : ''}
-										</span>
+										{#if $authStore.user?.profilePictureUrl}
+											<img 
+												src={$authStore.user.profilePictureUrl} 
+												alt={$authStore.user.username || ''}
+												class="h-full w-full object-cover"
+												on:error={(e) => {
+													const imgElement = e.target as HTMLImageElement;
+													const fallbackSpan = imgElement.nextElementSibling as HTMLSpanElement;
+													if (imgElement && fallbackSpan) {
+														imgElement.style.display = 'none';
+														fallbackSpan.style.display = 'flex';
+													}
+												}}
+											/>
+											<span class="text-sm font-semibold text-white hidden items-center justify-center h-full w-full">
+												{$authStore.user?.username ? $authStore.user.username.charAt(0) : ''}
+											</span>
+										{:else}
+											<span class="text-sm font-semibold text-white">
+												{$authStore.user?.username ? $authStore.user.username.charAt(0) : ''}
+											</span>
+										{/if}
 									</div>
 									<!-- Online status indicator -->
 									<div
@@ -234,9 +253,28 @@
 									<div class="border-b border-gray-100 px-4 py-3">
 										<div class="flex items-center space-x-3">
 											<div
-												class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600"
+												class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden"
 											>
-												<span class="font-semibold text-white">{$authStore.user?.username?.charAt(0) ?? ''}</span>
+												{#if $authStore.user?.profilePictureUrl}
+													<img 
+														src={$authStore.user.profilePictureUrl} 
+														alt={$authStore.user.username || ''}
+														class="h-full w-full object-cover"
+														on:error={(e) => {
+															const imgElement = e.target as HTMLImageElement;
+															const fallbackSpan = imgElement.nextElementSibling as HTMLSpanElement;
+															if (imgElement && fallbackSpan) {
+																imgElement.style.display = 'none';
+																fallbackSpan.style.display = 'flex';
+															}
+														}}
+													/>
+													<span class="font-semibold text-white hidden items-center justify-center h-full w-full">
+														{$authStore.user?.username?.charAt(0) ?? ''}
+													</span>
+												{:else}
+													<span class="font-semibold text-white">{$authStore.user?.username?.charAt(0) ?? ''}</span>
+												{/if}
 											</div>
 											<div class="min-w-0 flex-1">
 												<p class="truncate text-sm font-semibold text-gray-900">{$authStore.user?.username}</p>
@@ -404,58 +442,102 @@
 
 				<!-- Search and Stats -->
 				<div class="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-					<div
-						class="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0"
-					>
-						<!-- Search Bar -->
-						<div class="relative max-w-md flex-1">
-							<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-								<svg
-									class="h-5 w-5 text-gray-400"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-									/>
-								</svg>
+					{#if isLoading}
+						<!-- Search and stats skeleton -->
+						<div class="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
+							<!-- Search bar skeleton -->
+							<div class="relative max-w-md flex-1">
+								<div class="h-10 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl animate-pulse"></div>
 							</div>
-							<input
-								type="text"
-								bind:value={searchQuery}
-								placeholder="Search your vault..."
-								class="block w-full rounded-xl border border-gray-200 py-2.5 pr-3 pl-10 text-sm focus:border-transparent focus:ring-2 focus:ring-indigo-500"
-							/>
+							
+							<!-- Stats skeleton -->
+							<div class="flex items-center space-x-6">
+								<div class="flex items-center space-x-2">
+									<div class="h-2 w-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full animate-pulse"></div>
+									<div class="h-4 w-20 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
+								</div>
+								<div class="flex items-center space-x-2">
+									<div class="h-2 w-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full animate-pulse"></div>
+									<div class="h-4 w-16 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
+								</div>
+							</div>
 						</div>
+					{:else}
+						<div
+							class="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0"
+						>
+							<!-- Search Bar -->
+							<div class="relative max-w-md flex-1">
+								<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+									<svg
+										class="h-5 w-5 text-gray-400"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+										/>
+									</svg>
+								</div>
+								<input
+									type="text"
+									bind:value={searchQuery}
+									placeholder="Search your vault..."
+									class="block w-full rounded-xl border border-gray-200 py-2.5 pr-3 pl-10 text-sm focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+								/>
+							</div>
 
-						<!-- Stats -->
-						<div class="flex items-center space-x-6 text-sm text-gray-600">
-							<div class="flex items-center">
-								<div class="mr-2 h-2 w-2 rounded-full bg-indigo-500"></div>
-								<span>{vaultItems.length} total entries</span>
-							</div>
-							<div class="flex items-center">
-								<div class="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
-								<span>{filteredItems.length} shown</span>
+							<!-- Stats -->
+							<div class="flex items-center space-x-6 text-sm text-gray-600">
+								<div class="flex items-center">
+									<div class="mr-2 h-2 w-2 rounded-full bg-indigo-500"></div>
+									<span>{vaultItems.length} total entries</span>
+								</div>
+								<div class="flex items-center">
+									<div class="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
+									<span>{filteredItems.length} shown</span>
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 				</div>
 			</div>
 
 			<!-- Vault Items -->
 			<div class="px-4 sm:px-0">
 				{#if isLoading}
-					<div class="rounded-2xl border border-gray-100 bg-white p-12 shadow-sm">
-						<div class="text-center">
-							<div
-								class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
-							></div>
-							<p class="mt-4 text-gray-600">Loading your vault...</p>
+					<div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+						<div class="divide-y divide-gray-100">
+							<!-- Skeleton loader for vault items -->
+							{#each Array(5) as _, i}
+								<div class="p-6">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center space-x-4 flex-1">
+											<!-- Site favicon skeleton -->
+											<div class="h-12 w-12 rounded-xl bg-gradient-to-r from-gray-200 to-gray-300 animate-pulse"></div>
+											
+											<div class="flex-1 space-y-2">
+												<!-- Site name skeleton -->
+												<div class="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse" style="width: {Math.random() * 40 + 20}%"></div>
+												<!-- Site URL skeleton -->
+												<div class="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse" style="width: {Math.random() * 60 + 30}%"></div>
+											</div>
+										</div>
+										
+										<div class="flex items-center space-x-3">
+											<!-- Action buttons skeleton -->
+											<div class="h-8 w-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
+											<div class="h-8 w-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
+											<div class="h-8 w-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
+											<div class="h-8 w-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
+										</div>
+									</div>
+								</div>
+							{/each}
 						</div>
 					</div>
 				{:else if filteredItems.length === 0}
