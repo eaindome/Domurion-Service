@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { generatePassword, copyToClipboard } from '../../utils/helpers';
+	import { createAutoSave, getStatusText, getStatusColor, type SaveStatus } from '$lib/utils/autoSave';
+	import { fetchUserPreferences } from '$lib/api/settings';
 	import type { VaultEntryErrors } from '$lib/types';
 
 	export let formData: {
@@ -24,6 +26,76 @@
 	let passwordStrength = 0;
 	let isCopied = false;
 	let isGenerating = false;
+
+	// Auto-save functionality
+	let autoSaveEnabled = false;
+	let saveStatus: SaveStatus = 'saved';
+	let autoSaveInstance: ReturnType<typeof createAutoSave> | null = null;
+
+	// Load user preferences and setup auto-save
+	onMount(async () => {
+		try {
+			const preferences = await fetchUserPreferences();
+			autoSaveEnabled = preferences.autoSaveEntries ?? false;
+
+			if (autoSaveEnabled) {
+				// Create unique storage key based on mode and current data
+				const storageKey = mode === 'add' 
+					? 'vault-entry-draft-new'
+					: `vault-entry-draft-${formData.site || 'editing'}`;
+
+				autoSaveInstance = createAutoSave({
+					storageKey,
+					delay: 2000, // 2 second delay
+					enabled: autoSaveEnabled,
+					saveFunction: async () => {
+						// For now, this just saves to localStorage
+						// In the future, this could make API calls
+						autoSaveInstance?.saveDraft(formData);
+					},
+					onStatusChange: (status) => {
+						saveStatus = status;
+					}
+				});
+
+				// Try to load draft if we're adding a new entry
+				if (mode === 'add') {
+					const draft = autoSaveInstance.loadDraft();
+					if (draft) {
+						// Ask user if they want to restore the draft
+						const restore = confirm(
+							'Found a saved draft from a previous session. Would you like to restore it?'
+						);
+						if (restore) {
+							formData = { ...formData, ...draft };
+							dispatch('toast', { 
+								message: 'Draft restored successfully!', 
+								type: 'success' 
+							});
+						} else {
+							// Clear the draft if user doesn't want it
+							autoSaveInstance.clearDraft();
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to load user preferences for auto-save:', error);
+		}
+	});
+
+	// Clean up auto-save on component destroy
+	onDestroy(() => {
+		autoSaveInstance?.destroy();
+	});
+
+	// Trigger auto-save when form data changes
+	$: if (autoSaveInstance && autoSaveEnabled) {
+		// Save draft immediately to localStorage
+		autoSaveInstance.saveDraft(formData);
+		// Trigger debounced save
+		autoSaveInstance.trigger();
+	}
 
 	// Password strength calculation
 	$: {
@@ -89,9 +161,48 @@
 			nextField?.focus();
 		}
 	}
+
+	// Handle form submission - clear draft on successful save
+	function handleSubmit() {
+		onSubmit();
+		// Clear draft after successful submission
+		if (autoSaveInstance) {
+			autoSaveInstance.clearDraft();
+		}
+	}
 </script>
 
-<form on:submit|preventDefault={onSubmit} class="space-y-6 p-6">
+<form on:submit|preventDefault={handleSubmit} class="space-y-6 p-6" autocomplete="off">
+	<!-- Auto-save Status Indicator -->
+	{#if autoSaveEnabled && autoSaveInstance}
+		<div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+			<div class="flex items-center space-x-2">
+				<svg class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+				</svg>
+				<span class="text-gray-600">Auto-save</span>
+			</div>
+			<div class="flex items-center space-x-2">
+				{#if saveStatus === 'saving'}
+					<svg class="h-3 w-3 animate-spin {getStatusColor(saveStatus)}" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+				{:else if saveStatus === 'saved'}
+					<svg class="h-3 w-3 {getStatusColor(saveStatus)}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+					</svg>
+				{:else if saveStatus === 'error'}
+					<svg class="h-3 w-3 {getStatusColor(saveStatus)}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+				{/if}
+				<span class="{getStatusColor(saveStatus)} font-medium">
+					{getStatusText(saveStatus)}
+				</span>
+			</div>
+		</div>
+	{/if}
 	<!-- Site Name -->
 	<div class="space-y-2">
 		<label for="siteName" class="mb-1 block text-sm font-semibold text-gray-800">
