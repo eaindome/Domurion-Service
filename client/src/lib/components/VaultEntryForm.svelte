@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { generatePassword, copyToClipboard } from '../../utils/helpers';
+	import { copyToClipboard } from '../../utils/helpers';
 	import { createAutoSave, getStatusText, getStatusColor, type SaveStatus } from '$lib/utils/autoSave';
-	import { fetchUserPreferences } from '$lib/api/settings';
+	import { fetchUserPreferences, generatePassword } from '$lib/api/settings';
 	import type { VaultEntryErrors } from '$lib/types';
 
 	export let formData: {
@@ -123,11 +123,16 @@
 
 	async function handleGeneratePassword() {
 		isGenerating = true;
-		// Add a slight delay for better UX feedback
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		formData.password = generatePassword();
-		isGenerating = false;
-		dispatch('toast', { message: 'New password generated!', type: 'success' });
+		try {
+			const generatedPassword = await generatePassword();
+			formData.password = generatedPassword;
+			dispatch('toast', { message: 'New password generated!', type: 'success' });
+		} catch (error) {
+			dispatch('toast', { message: 'Failed to generate password. Please try again.', type: 'error' });
+			console.error('Error generating password:', error);
+		} finally {
+			isGenerating = false;
+		}
 	}
 
 	async function handleCopyPassword() {
