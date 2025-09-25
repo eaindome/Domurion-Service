@@ -2,6 +2,9 @@
 	import { updateUser } from '$lib/api/users';
 	import { generatePassword } from '$lib/api/settings';
     import { authStore } from '$lib/stores/authStore';
+	import { createAutoSave, getStatusText, getStatusColor, type SaveStatus } from '$lib/utils/autoSave';
+	import { fetchUserPreferences } from '$lib/api/settings';
+	import { onMount, onDestroy } from 'svelte';
 
 	export let user: {
 		id: string;
@@ -40,8 +43,82 @@
 	let showNewPassword = false;
 	let showConfirmPassword = false;
 
-	// Reactively update form fields when user changes
-	$: if (user) {
+	// Auto-save functionality
+	let autoSaveEnabled = false;
+	let saveStatus: SaveStatus = 'saved';
+	let autoSaveInstance: ReturnType<typeof createAutoSave> | null = null;
+	let isInitializing = true;
+
+	// Load user preferences and setup auto-save
+	onMount(async () => {
+		try {
+			const preferences = await fetchUserPreferences();
+			autoSaveEnabled = preferences.autoSaveEntries ?? false;
+
+			if (autoSaveEnabled && editMode) {
+				setupAutoSave();
+			}
+		} catch (error) {
+			console.warn('Failed to load user preferences for auto-save:', error);
+		} finally {
+			isInitializing = false;
+		}
+	});
+
+	// Clean up auto-save on component destroy
+	onDestroy(() => {
+		autoSaveInstance?.destroy();
+	});
+
+	function setupAutoSave() {
+		if (!autoSaveEnabled) return;
+
+		autoSaveInstance = createAutoSave({
+			storageKey: 'account-settings-draft',
+			delay: 2000,
+			enabled: autoSaveEnabled,
+			saveFunction: async () => {
+				// Save draft data (excluding sensitive fields)
+				const draftData = {
+					username: accountForm.username,
+					email: accountForm.email
+					// Note: We don't save password fields for security
+				};
+				autoSaveInstance?.saveDraft(draftData);
+			},
+			onStatusChange: (status) => {
+				saveStatus = status;
+			}
+		});
+
+		// Try to load draft
+		const draft = autoSaveInstance.loadDraft() as { username?: string; email?: string } | null;
+		if (draft && (draft.username !== user.username || draft.email !== user.email)) {
+			const restore = confirm(
+				'Found unsaved changes from a previous session. Would you like to restore them?'
+			);
+			if (restore) {
+				accountForm.username = draft.username || accountForm.username;
+				accountForm.email = draft.email || accountForm.email;
+				dispatch('success', { message: 'Draft changes restored!' });
+			} else {
+				autoSaveInstance.clearDraft();
+			}
+		}
+	}
+
+	// Trigger auto-save when form data changes (but only for non-sensitive fields)
+	$: if (autoSaveInstance && autoSaveEnabled && editMode) {
+		const draftData = {
+			username: accountForm.username,
+			email: accountForm.email
+		};
+		autoSaveInstance.saveDraft(draftData);
+		autoSaveInstance.trigger();
+	}
+
+	// Reactively update form fields when user changes - but only after initialization
+	$: if (user && !isInitializing) {
 		accountForm.username = user.username;
 		accountForm.email = user.email;
 		originalData = { username: user.username, email: user.email };
@@ -56,6 +133,11 @@
 	function enableEditMode() {
 		editMode = true;
 		originalData = { username: accountForm.username, email: accountForm.email };
+		
+		// Setup auto-save when entering edit mode
+		if (autoSaveEnabled) {
+			setupAutoSave();
+		}
 	}
 
 	function cancelEdit() {
@@ -70,6 +152,11 @@
 		profilePicturePreview = user.profilePictureUrl || null;
 		showNewPassword = false;
 		showConfirmPassword = false;
+
+		// Clean up auto-save
+		autoSaveInstance?.destroy();
+		autoSaveInstance?.clearDraft();
+		autoSaveInstance = null;
 	}
 
 	function handleProfilePictureChange(event: Event) {
@@ -168,6 +255,11 @@
 				showConfirmPassword = false;
 				editMode = false;
 
+				// Clear auto-save draft on successful save
+				autoSaveInstance?.clearDraft();
+				autoSaveInstance?.destroy();
+				autoSaveInstance = null;
+
 				dispatch('success', { message: 'Account updated successfully!' });
                 // Update authStore with new user data
 				authStore.setUser({ 
@@ -190,7 +282,35 @@
 <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
 	<h2 class="mb-6 text-xl font-semibold text-gray-900">Account Information</h2>
 
-	{#if !editMode}
+	{#if isInitializing}
+		<!-- Loading skeleton while initializing -->
+		<div class="space-y-6 animate-pulse">
+			<!-- Profile Picture Skeleton -->
+			<div class="flex items-center space-x-6">
+				<div class="h-20 w-20 bg-gray-200 rounded-full"></div>
+				<div>
+					<div class="h-6 bg-gray-200 rounded w-32 mb-2"></div>
+				</div>
+			</div>
+			
+			<!-- Account Details Skeleton -->
+			<div class="space-y-4">
+				<div>
+					<div class="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+					<div class="h-12 bg-gray-100 rounded-xl w-full"></div>
+				</div>
+				<div>
+					<div class="h-4 bg-gray-200 rounded w-28 mb-2"></div>
+					<div class="h-12 bg-gray-100 rounded-xl w-full"></div>
+				</div>
+			</div>
+			
+			<!-- Button Skeleton -->
+			<div class="flex justify-end">
+				<div class="h-12 bg-gray-200 rounded-xl w-32"></div>
+			</div>
+		</div>
+	{:else if !editMode}
 		<!-- View Mode -->
 		<div class="space-y-6">
 			<!-- Profile Picture -->
@@ -257,6 +377,37 @@
 	{:else}
 		<!-- Edit Mode -->
 		<form on:submit|preventDefault={updateAccount} class="space-y-6" autocomplete="off">
+			<!-- Auto-save Status Indicator -->
+			{#if autoSaveEnabled && autoSaveInstance && editMode}
+				<div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+					<div class="flex items-center space-x-2">
+						<svg class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+						</svg>
+						<span class="text-gray-600">Auto-save draft</span>
+					</div>
+					<div class="flex items-center space-x-2">
+						{#if saveStatus === 'saving'}
+							<svg class="h-3 w-3 animate-spin {getStatusColor(saveStatus)}" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						{:else if saveStatus === 'saved'}
+							<svg class="h-3 w-3 {getStatusColor(saveStatus)}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+							</svg>
+						{:else if saveStatus === 'error'}
+							<svg class="h-3 w-3 {getStatusColor(saveStatus)}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+							</svg>
+						{/if}
+						<span class="{getStatusColor(saveStatus)} font-medium">
+							{getStatusText(saveStatus)}
+						</span>
+					</div>
+				</div>
+			{/if}
+			
 			<!-- Hidden fields to prevent autofill -->
 			<input type="text" style="display:none" autocomplete="off" />
 			<input type="password" style="display:none" autocomplete="off" />
