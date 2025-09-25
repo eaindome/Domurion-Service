@@ -1,16 +1,7 @@
 /* eslint-disable svelte/no-navigation-without-resolve */
 import { writable } from 'svelte/store';
 import { goto } from '$app/navigation';
-
-export interface User {
-	id: string;
-	email: string;
-	name?: string;
-	username?: string;
-	authProvider?: string;
-	googleId?: string;
-	twoFactorEnabled?: boolean;
-}
+import type { User } from '$lib/types';
 
 interface AuthState {
 	user: User | null;
@@ -45,7 +36,8 @@ function createAuthStore() {
 						googleId: res.user.googleId,
 						name: res.user.name ?? '',
 						authProvider: res.user.authProvider ?? '',
-						twoFactorEnabled: res.user.twoFactorEnabled ?? false
+						twoFactorEnabled: res.user.twoFactorEnabled ?? false,
+						profilePictureUrl: res.user.profilePictureUrl
 					}, 
 					isAuthenticated: true, 
 					loading: false, 
