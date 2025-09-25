@@ -13,7 +13,8 @@
     $: user = {
 		email: $authStore.user?.email || '',
 		username: $authStore.user?.username || '',
-		id: $authStore.user?.id || ''
+		id: $authStore.user?.id || '',
+		profilePictureUrl: $authStore.user?.profilePictureUrl || ''
 	};
 
     // User menu dropdown state
@@ -100,8 +101,27 @@
 							on:click={() => (showUserMenu = !showUserMenu)}
 						>
 							<div class="relative">
-								<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white">
-									<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
+								<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm ring-2 ring-white overflow-hidden">
+									{#if user.profilePictureUrl}
+										<img 
+											src={user.profilePictureUrl} 
+											alt={user.username}
+											class="h-full w-full object-cover"
+											on:error={(e) => {
+												const imgElement = e.target as HTMLImageElement;
+												const fallbackSpan = imgElement.nextElementSibling as HTMLSpanElement;
+												if (imgElement && fallbackSpan) {
+													imgElement.style.display = 'none';
+													fallbackSpan.style.display = 'flex';
+												}
+											}}
+										/>
+										<span class="text-sm font-semibold text-white hidden items-center justify-center h-full w-full">
+											{user.username.charAt(0)}
+										</span>
+									{:else}
+										<span class="text-sm font-semibold text-white">{user.username.charAt(0)}</span>
+									{/if}
 								</div>
 								<div class="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-400"></div>
 							</div>
@@ -118,8 +138,27 @@
 							<div class="animate-menu-enter absolute right-0 z-50 mt-3 w-56 rounded-2xl border border-gray-200 bg-white py-2 shadow-xl">
 								<div class="border-b border-gray-100 px-4 py-3">
 									<div class="flex items-center space-x-3">
-										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600">
-											<span class="font-semibold text-white">{user.username.charAt(0)}</span>
+										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden">
+											{#if user.profilePictureUrl}
+												<img 
+													src={user.profilePictureUrl} 
+													alt={user.username}
+													class="h-full w-full object-cover"
+													on:error={(e) => {
+														const imgElement = e.target as HTMLImageElement;
+														const fallbackSpan = imgElement.nextElementSibling as HTMLSpanElement;
+														if (imgElement && fallbackSpan) {
+															imgElement.style.display = 'none';
+															fallbackSpan.style.display = 'flex';
+														}
+													}}
+												/>
+												<span class="font-semibold text-white hidden items-center justify-center h-full w-full">
+													{user.username.charAt(0)}
+												</span>
+											{:else}
+												<span class="font-semibold text-white">{user.username.charAt(0)}</span>
+											{/if}
 										</div>
 										<div class="min-w-0 flex-1">
 											<p class="truncate text-sm font-semibold text-gray-900">{user.username}</p>
