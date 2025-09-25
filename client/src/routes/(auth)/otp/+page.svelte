@@ -329,7 +329,7 @@
 					<button
 						type="button"
 						on:click={handleResendOtp}
-						disabled={isResending || !email}
+						disabled={isResending || !email || (timeLeft > 0)}
 						class="flex items-center font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						class:text-indigo-600={timeLeft > 0}
 						class:hover:text-indigo-500={timeLeft > 0}
