@@ -2,6 +2,7 @@
 	import { fetchUserPreferences, updateUserPreferences } from '$lib/api/settings';
 	import { get2FAStatus, enable2FA, disable2FA, generateRecoveryCodes } from '$lib/api/2fa';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import type { UserPreferences } from '$lib/types';
 
 	export let isLoading = false;
@@ -13,6 +14,9 @@
 		error: { message: string };
 		loading: { isLoading: boolean };
 	}>();
+
+	// Add initial loading state
+	let isInitialLoading = true;
 
 	// Security settings state
 	let securitySettings = {
@@ -26,6 +30,16 @@
 	let showRecoveryCodes = false;
 	let recoveryCodes: string[] = [];
 	let isToggling2FA = false;
+	let highlight2FA = false;
+
+	// Check if we should highlight the 2FA section
+	$: if ($page.url.searchParams.get('highlight') === '2fa') {
+		highlight2FA = true;
+		// Remove highlight after 5 seconds
+		setTimeout(() => {
+			highlight2FA = false;
+		}, 5000);
+	}
 
 	// Load settings on component mount
 	onMount(async () => {
@@ -53,6 +67,7 @@
 			dispatch('error', { message: 'Failed to load security settings.' });
 			console.error('Error loading security settings:', error);
 		} finally {
+			isInitialLoading = false;
 			dispatch('loading', { isLoading: false });
 		}
 	}
@@ -130,9 +145,54 @@
 <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
 	<h2 class="mb-6 text-xl font-semibold text-gray-900">Security Settings</h2>
 
+	{#if isInitialLoading}
+		<!-- Loading skeleton while fetching settings -->
+		<div class="space-y-6 animate-pulse">
+			<div class="rounded-xl border border-gray-200 p-4">
+				<div class="flex items-center justify-between mb-4">
+					<div class="space-y-2">
+						<div class="h-4 bg-gray-200 rounded w-44"></div>
+						<div class="h-3 bg-gray-200 rounded w-64"></div>
+					</div>
+					<div class="h-6 w-11 bg-gray-200 rounded-full"></div>
+				</div>
+			</div>
+			
+			<div class="space-y-2">
+				<div class="h-4 bg-gray-200 rounded w-32"></div>
+				<div class="h-10 bg-gray-100 rounded-xl w-full"></div>
+			</div>
+			
+			<div class="flex items-center justify-between rounded-xl bg-gray-100 p-4">
+				<div class="space-y-2">
+					<div class="h-4 bg-gray-200 rounded w-28"></div>
+					<div class="h-3 bg-gray-200 rounded w-48"></div>
+				</div>
+				<div class="h-6 w-11 bg-gray-200 rounded-full"></div>
+			</div>
+		</div>
+	{:else}
+		<!-- Actual content once data is loaded -->
+
 	<form on:submit|preventDefault={updateSecuritySettings} class="space-y-6">
 		<!-- Two-Factor Authentication -->
-		<div class="rounded-xl border border-gray-200 p-4">
+		<div class="rounded-xl border border-gray-200 p-4 {highlight2FA ? 'ring-2 ring-indigo-500 bg-indigo-50/50 border-indigo-200' : ''}">
+			{#if highlight2FA}
+				<div class="mb-4 p-3 rounded-lg bg-indigo-100 border border-indigo-200">
+					<div class="flex items-start">
+						<svg class="flex-shrink-0 h-5 w-5 text-indigo-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+						</svg>
+						<div>
+							<h4 class="text-sm font-medium text-indigo-800">Enable 2FA Required</h4>
+							<p class="text-sm text-indigo-700 mt-1">
+								To view passwords in your vault, you need to enable two-factor authentication. Toggle the switch below to get started.
+							</p>
+						</div>
+					</div>
+				</div>
+			{/if}
+			
 			<div class="flex items-center justify-between mb-4">
 				<div>
 					<h3 class="text-sm font-medium text-gray-900">Two-Factor Authentication</h3>
@@ -260,4 +320,5 @@
 			{isLoading ? 'Updating...' : 'Update Security Settings'}
 		</button>
 	</form>
+	{/if}
 </div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { toast } from '../stores/toast';
+	import { toast } from '$lib/stores/toast';
 	import { fly } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 
