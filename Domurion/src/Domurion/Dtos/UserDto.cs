@@ -14,4 +14,10 @@ namespace Domurion.Dtos
         public string? NewPassword { get; set; }
         public string? Name { get; set; }
     }
+
+    public class ResetPasswordDto
+    {
+        public required string Token { get; set; }
+        public required string NewPassword { get; set; }
+    }
 }
