@@ -22,7 +22,10 @@
 		try {
 			const response = await login(email, password);
 			if (response.success && response.user) {
-				authStore.setUser(response.user);
+				authStore.setUser({
+					...response.user,
+					username: response.user.username ?? ''
+				});
 				toast.show('Login successful', 'success');
 				await new Promise(res => setTimeout(res, 2000));
 				window.location.href = '/dashboard';
