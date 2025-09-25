@@ -113,3 +113,71 @@ export async function regenerateRecoveryCodes(code: string): Promise<string[]> {
 	const data = await response.json();
 	return data.recoveryCodes;
 }
+
+// Request OTP for viewing credential
+export async function requestViewOtp(credentialId: string): Promise<{ message: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/users/request-view-otp?credentialId=${credentialId}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		let errorMessage = 'Failed to request view OTP';
+		try {
+			const data = JSON.parse(text);
+			errorMessage = data?.message || data?.error || errorMessage;
+		} catch {
+			// If parsing fails, use the raw text as error message
+			errorMessage = text || errorMessage;
+		}
+		throw new Error(errorMessage);
+	}
+	
+	// Handle empty response
+	const text = await response.text();
+	if (!text) {
+		return { message: 'OTP request successful' };
+	}
+	
+	try {
+		return JSON.parse(text);
+	} catch {
+		return { message: text };
+	}
+}
+
+// Verify OTP for viewing credential
+export async function verifyViewOtp(otp: string): Promise<{ verified: boolean }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/users/verify-view-otp`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ otp }),
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		let errorMessage = 'Failed to verify OTP';
+		try {
+			const data = JSON.parse(text);
+			errorMessage = data?.message || data?.error || errorMessage;
+		} catch {
+			// If parsing fails, use the raw text as error message
+			errorMessage = text || errorMessage;
+		}
+		throw new Error(errorMessage);
+	}
+	
+	// Handle empty response
+	const text = await response.text();
+	if (!text) {
+		return { verified: true };
+	}
+	
+	try {
+		return JSON.parse(text);
+	} catch {
+		// If we can't parse the response, assume success if status was OK
+		return { verified: true };
+	}
+}
