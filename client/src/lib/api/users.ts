@@ -1,7 +1,7 @@
 import { API_BASE } from "./config";
 import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
-export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean }; message?: string }> {
+export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { id: string; username: string; email: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean; profilePictureUrl?: string }; message?: string }> {
     const response = await fetchWithAuth(`${API_BASE}/api/users/me`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -30,31 +30,34 @@ export async function fetchCurrentUser(): Promise<{ success: boolean; user?: { i
     }
 }
 
-// Update user info (username, password, name)
+// Update user info (username, password, name, profile picture)
 export async function updateUser(
-    userId: string,
     newUsername?: string,
     newPassword?: string,
-    name?: string
+    name?: string,
+    profilePicture?: File
 ): Promise<{
     success: boolean;
-    user?: { id: string; username: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean };
+    user?: { id: string; username: string; name?: string; authProvider?: string; googleId?: string; twoFactorEnabled?: boolean; profilePictureUrl?: string };
     message?: string;
 }> {
-    const params = new URLSearchParams();
-    if (name) params.append('name', name);
-    const url = `${API_BASE}/api/users/update?${params.toString()}`;
-    const body: { userId: string; newUsername?: string; newPassword?: string } = { userId };
-    if (newUsername) body.newUsername = newUsername;
-    if (newPassword) body.newPassword = newPassword;
+    const url = `${API_BASE}/api/users/update`;
+    
+    // Create FormData for multipart form data (supports file uploads)
+    const formData = new FormData();
+    if (newUsername) formData.append('NewUsername', newUsername);
+    if (newPassword) formData.append('NewPassword', newPassword);
+    if (name) formData.append('Name', name);
+    if (profilePicture) formData.append('profilePicture', profilePicture);
+    
     const response = await fetchWithAuth(url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: formData, // Don't set Content-Type header - let browser set it with boundary
         credentials: 'include'
     });
     if (response.ok) {
         const data = await response.json();
+        console.log(`Updated user: ${JSON.stringify(data)}`);
         return { success: true, user: data };
     } else {
         let errorMsg = 'Unknown error';
