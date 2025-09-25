@@ -29,6 +29,29 @@ export type UserSettings = {
 	notificationsEnabled: boolean;
 };
 
+// Security settings type
+export interface SecuritySettings {
+	twoFactorEnabled: boolean;
+	sessionTimeout: number;
+	autoLock: boolean;
+	loginNotifications: boolean;
+}
+
+// User preferences type (matching backend model)
+export interface UserPreferences {
+	passwordLength: number;
+	useUppercase: boolean;
+	useLowercase: boolean;
+	useNumbers: boolean;
+	useSymbols: boolean;
+	autoSaveEntries: boolean;
+	showPasswordStrength: boolean;
+	sessionTimeoutMinutes: number;
+	// Security-related preferences
+	autoLockEnabled?: boolean;
+	loginNotificationsEnabled?: boolean;
+}
+
 // Dashboard vault item type
 export interface VaultItem {
 	id: string;
@@ -49,6 +72,18 @@ export interface SupportRequest {
 	reason?: string;
 	status: string;
 	createdAt: string;
+}
+
+// User type matching backend model
+export interface User {
+	id: string;
+	name?: string;
+	email: string;
+	username: string;
+	profilePictureUrl?: string;
+	authProvider?: string;
+	googleId?: string;
+	twoFactorEnabled?: boolean;
 }
 
 // Create a share invitation (by username or email)
