@@ -4,6 +4,9 @@
 	import type { VaultItem } from '$lib/types';
 	import { maskPassword, getSiteFavicon } from '$lib/utils/helpers';
 	import { goto } from '$app/navigation';
+	import { requestViewOtp, verifyViewOtp, get2FAStatus } from '$lib/api/2fa';
+	import { toast } from '$lib/stores/toast';
+	import { onMount } from 'svelte';
 
 	export let item: VaultItem;
 
@@ -38,6 +41,10 @@
 	let twoFACodeDigits = ['', '', '', '', '', ''];
 	let twoFAError = '';
 	let verifying2FA = false;
+	let requestingOtp = false;
+	let otpRequested = false;
+	let is2FAEnabled = false;
+	let checking2FAStatus = false;
 	let codeInputs: Array<HTMLInputElement | null> = [null, null, null, null, null, null];
 
 	function assignCodeInput(idx: number) {
@@ -102,8 +109,78 @@
 
 	// Mock 2FA verification (replace with real API call)
 	async function verify2FACode(code: string): Promise<boolean> {
-		await new Promise((r) => setTimeout(r, 600));
-		return code === '123456';
+		try {
+			const result = await verifyViewOtp(code);
+			return result.verified;
+		} catch (error) {
+			console.error('Error verifying OTP:', error);
+			twoFAError = error instanceof Error ? error.message : 'Failed to verify OTP';
+			return false;
+		}
+	}
+
+	// Request OTP for viewing credential
+	async function requestOtpCode(): Promise<void> {
+		if (requestingOtp) return;
+		
+		requestingOtp = true;
+		twoFAError = '';
+		
+		try {
+			await requestViewOtp(item.id);
+			otpRequested = true;
+			toast.show('OTP sent to your email', 'success');
+		} catch (error) {
+			console.error('Error requesting OTP:', error);
+			twoFAError = error instanceof Error ? error.message : 'Failed to request OTP';
+		} finally {
+			requestingOtp = false;
+		}
+	}
+
+	// Check 2FA status
+	async function check2FAStatus(): Promise<void> {
+		if (checking2FAStatus) return;
+		
+		checking2FAStatus = true;
+		try {
+			const status = await get2FAStatus();
+			is2FAEnabled = status.enabled;
+		} catch (error) {
+			console.error('Error checking 2FA status:', error);
+			is2FAEnabled = false;
+		} finally {
+			checking2FAStatus = false;
+		}
+	}
+
+	// Handle showing password - check 2FA status first
+	async function handleShowPassword(): Promise<void> {
+		if (!showPassword) {
+			await check2FAStatus();
+			
+			if (!is2FAEnabled) {
+				show2FAModal = true;
+				return;
+			}
+			
+			// 2FA is enabled, proceed with OTP flow
+			show2FAModal = true;
+			twoFACodeDigits = ['', '', '', '', '', ''];
+			twoFAError = '';
+			otpRequested = false;
+			// Automatically request OTP when modal opens
+			setTimeout(() => requestOtpCode(), 100);
+		} else {
+			showPassword = false;
+		}
+	}
+
+	// Navigate to settings with 2FA highlight
+	function goToSettings(): void {
+		show2FAModal = false;
+		// Add a URL parameter to highlight the 2FA section
+		goto('/settings?highlight=2fa');
 	}
 
 	$: passwordStrength = getPasswordStrength(item?.password);
@@ -336,16 +413,16 @@
 
 				<!-- Modal Content -->
 				<div
-					class="animate-modal-enter relative w-full max-w-lg rounded-3xl border border-gray-100 bg-white shadow-2xl"
+					class="animate-modal-enter relative w-full max-w-md rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
 				>
-					<!-- Header -->
-					<div class="relative border-b border-gray-100 px-8 pt-8 pb-6">
+					<!-- Compact Header -->
+					<div class="relative bg-gradient-to-br from-indigo-50 to-blue-50 border-b border-gray-100 px-6 pt-6 pb-4">
 						<button
-							class="absolute top-4 right-4 rounded-full p-2 text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+							class="absolute top-3 right-3 rounded-full p-1.5 text-gray-400 transition-all duration-200 hover:bg-white/50 hover:text-gray-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none backdrop-blur-sm"
 							on:click={closeModal}
 							aria-label="Close details"
 						>
-							<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -355,24 +432,24 @@
 							</svg>
 						</button>
 
-						<div class="flex flex-col items-center text-center">
-							<div class="relative mb-4">
+						<div class="flex items-center space-x-3">
+							<div class="relative">
 								<img
 									src={getSiteFavicon(item.siteUrl)}
 									alt="{item.siteName} favicon"
-									class="h-16 w-16 rounded-2xl border border-gray-200 shadow-md"
+									class="h-12 w-12 rounded-xl border-2 border-white shadow-md"
 									on:error={(e) => {
 										const target = e.target as HTMLImageElement | null;
 										if (target) {
-											target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73L12 2 4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73L12 22l8-4.27A2 2 0 0 0 21 16z'/%3E%3Cpath d='M12 12l8-4.27L12 2 4 7.73z'/%3E%3C/svg%3E`;
+											target.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73L12 2 4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73L12 22l8-4.27A2 2 0 0 0 21 16z'/%3E%3Cpath d='M12 12l8-4.27L12 2 4 7.73z'/%3E%3C/svg%3E`;
 										}
 									}}
 								/>
-								<!-- Trust indicator -->
+								<!-- Smaller trust indicator -->
 								<div
-									class="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-green-500"
+									class="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-green-500 shadow-sm"
 								>
-									<svg class="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+									<svg class="h-2 w-2 text-white" fill="currentColor" viewBox="0 0 20 20">
 										<path
 											fill-rule="evenodd"
 											d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -381,122 +458,94 @@
 									</svg>
 								</div>
 							</div>
-
-							<h2 class="mb-2 text-2xl font-bold text-gray-900">{item.siteName}</h2>
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a
-								href={item.siteUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="inline-flex items-center text-sm text-indigo-600 transition-colors hover:text-indigo-700"
-							>
-								{item.siteUrl}
-								<svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-									/>
-								</svg>
-							</a>
+							<div class="flex-1 text-left">
+								<h2 class="text-lg font-bold text-gray-900 truncate">{item.siteName}</h2>
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a
+									href={item.siteUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="inline-flex items-center text-xs text-indigo-600 transition-colors hover:text-indigo-700 truncate"
+								>
+									{item.siteUrl}
+									<svg class="ml-1 h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+										/>
+									</svg>
+								</a>
+							</div>
 						</div>
 					</div>
 
-					<!-- Content -->
-					<div class="space-y-6 px-8 py-6">
-						<!-- Username Field -->
+					<!-- Scrollable Content -->
+					<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+						<!-- Email Field -->
 						<div class="group">
 							<div class="mb-2 flex items-center justify-between">
-								<label for="username-field" class="text-sm font-medium text-gray-700"
-									>Email</label
-								>
+								<label for="username-field" class="flex items-center text-sm font-medium text-gray-700">
+									<svg class="mr-1.5 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+									</svg>
+									Email
+								</label>
 								<button
 									on:click={() => copyToClipboard(item.email, 'email')}
 									class="flex items-center rounded-md px-2 py-1 text-xs text-gray-500 transition-all duration-200 hover:bg-indigo-50 hover:text-indigo-600"
 								>
 									{#if copiedField === 'email'}
-										<svg
-											class="mr-1 h-3 w-3 text-green-600"
-											fill="currentColor"
-											viewBox="0 0 20 20"
-										>
-											<path
-												fill-rule="evenodd"
-												d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-												clip-rule="evenodd"
-											/>
+										<svg class="mr-1 h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
 										</svg>
 										Copied!
 									{:else}
 										<svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-											/>
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
 										</svg>
 										Copy
 									{/if}
 								</button>
 							</div>
-							<div class="relative">
-								<input
-									id="email-field"
-									type="text"
-									value={item.email}
-									readonly
-									class="w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-									on:click={() => copyToClipboard(item.email, 'email')}
-								/>
-							</div>
+							<input
+								id="email-field"
+								type="text"
+								value={item.email}
+								readonly
+								class="w-full cursor-pointer rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+								on:click={() => copyToClipboard(item.email, 'email')}
+							/>
 						</div>
 
 						<!-- Password Field -->
 						<div class="group">
 							<div class="mb-2 flex items-center justify-between">
-								<label for="password-field" class="text-sm font-medium text-gray-700"
-									>Password</label
-								>
+								<label for="password-field" class="flex items-center text-sm font-medium text-gray-700">
+									<svg class="mr-1.5 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+									</svg>
+									Password
+								</label>
 								<div class="flex items-center space-x-2">
-									<!-- Password Strength Indicator -->
-									<div class="flex items-center">
-										<div class="mr-1 h-2 w-2 rounded-full bg-{passwordStrength.color}-500"></div>
-										<span class="text-xs text-{passwordStrength.color}-600 font-medium"
-											>{passwordStrength.text}</span
-										>
+									<!-- Compact Password Strength -->
+									<div class="flex items-center px-2 py-0.5 rounded-full bg-gray-100">
+										<div class="mr-1 h-1.5 w-1.5 rounded-full bg-{passwordStrength.color}-500"></div>
+										<span class="text-xs text-{passwordStrength.color}-600 font-medium">{passwordStrength.text}</span>
 									</div>
 									<button
 										on:click={() => copyToClipboard(item.password, 'password')}
 										class="flex items-center rounded-md px-2 py-1 text-xs text-gray-500 transition-all duration-200 hover:bg-indigo-50 hover:text-indigo-600"
 									>
 										{#if copiedField === 'password'}
-											<svg
-												class="mr-1 h-3 w-3 text-green-600"
-												fill="currentColor"
-												viewBox="0 0 20 20"
-											>
-												<path
-													fill-rule="evenodd"
-													d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-													clip-rule="evenodd"
-												/>
+											<svg class="mr-1 h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
 											</svg>
 											Copied!
 										{:else}
-											<svg
-												class="mr-1 h-3 w-3"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-												/>
+											<svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
 											</svg>
 											Copy
 										{/if}
@@ -509,20 +558,12 @@
 									type={showPassword ? 'text' : 'password'}
 									value={item.password}
 									readonly
-									class="w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 font-mono text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+									class="w-full cursor-pointer rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 pr-10 font-mono text-sm text-gray-900 transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
 									on:click={() => copyToClipboard(item.password, 'password')}
 								/>
 								<button
-									on:click={() => {
-										if (!showPassword) {
-											show2FAModal = true;
-											twoFACodeDigits = ['', '', '', '', '', ''];
-											twoFAError = '';
-										} else {
-											showPassword = false;
-										}
-									}}
-									class="absolute top-1/2 right-3 -translate-y-1/2 transform p-1 text-gray-400 transition-colors hover:text-gray-600"
+									on:click={handleShowPassword}
+									class="absolute top-1/2 right-2.5 -translate-y-1/2 transform p-1 text-gray-400 transition-all duration-200 hover:text-gray-600 hover:bg-gray-100 rounded-md"
 									aria-label={showPassword ? 'Hide password' : 'Show password'}
 								>
 									{#if showPassword}
@@ -559,13 +600,30 @@
 											role="button"
 											tabindex="0"
 											aria-label="Close 2FA modal"
-											on:click={() => { show2FAModal = false; twoFACodeDigits = ['', '', '', '', '', '']; twoFAError = ''; }}
+											on:click={() => { 
+												show2FAModal = false; 
+												twoFACodeDigits = ['', '', '', '', '', '']; 
+												twoFAError = '';
+												otpRequested = false;
+												requestingOtp = false;
+											}}
 											on:keydown={(e) => e.key === 'Escape' && (show2FAModal = false)}
 										></div>
 										<!-- Modal Content -->
 										<form
 											class="animate-modal-enter relative w-full max-w-xs rounded-2xl border border-gray-100 bg-white shadow-2xl p-8"
 											on:submit|preventDefault={async () => {
+												if (!is2FAEnabled) {
+													// Redirect to settings
+													goToSettings();
+													return;
+												}
+												
+												if (!otpRequested) {
+													await requestOtpCode();
+													return;
+												}
+												
 												verifying2FA = true;
 												twoFAError = '';
 												const code = getTwoFACode();
@@ -575,41 +633,107 @@
 													show2FAModal = false;
 													showPassword = true;
 													twoFACodeDigits = ['', '', '', '', '', ''];
-												} else {
-													twoFAError = 'Invalid code. Please try again.';
+													otpRequested = false;
 												}
 											}}
 										>
-											<h3 class="mb-4 text-lg font-semibold text-gray-900 text-center">Enter 2FA Code</h3>
-											<div class="mb-2 flex justify-center space-x-2">
-												{#each [0,1,2,3,4,5] as idx}
-													<input
-														type="text"
-														inputmode="numeric"
-														maxlength="1"
-														class="w-10 h-12 rounded-lg border border-gray-200 text-center text-xl font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-														bind:this={codeInputs[idx]}
-														bind:value={twoFACodeDigits[idx]}
-														on:input={(e) => handle2FADigitInput(e, idx)}
-														on:keydown={(e) => handle2FADigitKeydown(e, idx)}
-														autocomplete={idx === 0 ? 'one-time-code' : 'off'}
-													/>
-												{/each}
-											</div>
+											<h3 class="mb-4 text-lg font-semibold text-gray-900 text-center">
+												{#if !is2FAEnabled}
+													2FA Required
+												{:else if !otpRequested}
+													Request View Access
+												{:else}
+													Enter Email OTP
+												{/if}
+											</h3>
+											
+											{#if !is2FAEnabled}
+												<div class="text-center mb-4">
+													<div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+														<svg class="mx-auto mb-2 h-8 w-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+														</svg>
+														<h4 class="text-sm font-medium text-amber-800 mb-1">2FA Not Enabled</h4>
+														<p class="text-sm text-amber-700">
+															Two-factor authentication is required to view passwords. Please enable 2FA in your security settings first.
+														</p>
+													</div>
+													<button
+														type="submit"
+														class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-white font-semibold transition-colors hover:bg-indigo-700"
+													>
+														Go to Security Settings
+													</button>
+												</div>
+											{:else if !otpRequested}
+												<div class="text-center mb-4">
+													<p class="text-sm text-gray-600 mb-4">
+														An OTP will be sent to your email to verify your identity before viewing this password.
+													</p>
+													<button
+														type="submit"
+														class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-white font-semibold transition-colors hover:bg-indigo-700 disabled:opacity-60"
+														disabled={requestingOtp}
+													>
+														{requestingOtp ? 'Sending OTP...' : 'Send OTP to Email'}
+													</button>
+												</div>
+											{:else}
+												<div class="text-center mb-4">
+													<p class="text-sm text-gray-600 mb-4">
+														Check your email for the 6-digit OTP code and enter it below.
+													</p>
+												</div>
+												<div class="mb-2 flex justify-center space-x-2">
+													{#each [0,1,2,3,4,5] as idx}
+														<input
+															type="text"
+															inputmode="numeric"
+															maxlength="1"
+															class="w-10 h-12 rounded-lg border border-gray-200 text-center text-xl font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+															bind:this={codeInputs[idx]}
+															bind:value={twoFACodeDigits[idx]}
+															on:input={(e) => handle2FADigitInput(e, idx)}
+															on:keydown={(e) => handle2FADigitKeydown(e, idx)}
+															autocomplete={idx === 0 ? 'one-time-code' : 'off'}
+														/>
+													{/each}
+												</div>
+												<button
+													type="submit"
+													class="mt-2 w-full rounded-lg bg-indigo-600 px-4 py-2 text-white font-semibold transition-colors hover:bg-indigo-700 disabled:opacity-60"
+													disabled={verifying2FA || getTwoFACode().length !== 6 || twoFACodeDigits.some(d => d === '')}
+												>
+													{verifying2FA ? 'Verifying...' : 'Verify & Show Password'}
+												</button>
+												
+												<div class="mt-3 text-center">
+													<button
+														type="button"
+														class="text-sm text-indigo-600 hover:text-indigo-700 underline"
+														on:click={requestOtpCode}
+														disabled={requestingOtp}
+													>
+														{requestingOtp ? 'Resending...' : 'Resend OTP'}
+													</button>
+												</div>
+											{/if}
+											
 											{#if twoFAError}
 												<div class="mb-2 text-sm text-red-600 text-center">{twoFAError}</div>
 											{/if}
-											<button
-												type="submit"
-												class="mt-2 w-full rounded-lg bg-indigo-600 px-4 py-2 text-white font-semibold transition-colors hover:bg-indigo-700 disabled:opacity-60"
-												disabled={verifying2FA || getTwoFACode().length !== 6 || twoFACodeDigits.some(d => d === '')}
-											>
-												{verifying2FA ? 'Verifying...' : 'Verify & Reveal'}
-											</button>
+											
 											<button
 												type="button"
 												class="mt-3 w-full rounded-lg bg-gray-100 px-4 py-2 text-gray-700 font-medium hover:bg-gray-200"
-												on:click={() => { show2FAModal = false; twoFACodeDigits = ['', '', '', '', '', '']; twoFAError = ''; }}
+												on:click={() => { 
+													show2FAModal = false; 
+													twoFACodeDigits = ['', '', '', '', '', '']; 
+													twoFAError = '';
+													otpRequested = false;
+													requestingOtp = false;
+													is2FAEnabled = false;
+												}}
 											>
 												Cancel
 											</button>
@@ -623,37 +747,24 @@
 						{#if item.notes}
 							<div class="group">
 								<div class="mb-2 flex items-center justify-between">
-									<label for="notes-field" class="text-sm font-medium text-gray-700">Notes</label>
+									<label for="notes-field" class="flex items-center text-sm font-medium text-gray-700">
+										<svg class="mr-1.5 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+										</svg>
+										Notes
+									</label>
 									<button
 										on:click={() => copyToClipboard(item.notes ?? '', 'notes')}
 										class="flex items-center rounded-md px-2 py-1 text-xs text-gray-500 transition-all duration-200 hover:bg-indigo-50 hover:text-indigo-600"
 									>
 										{#if copiedField === 'notes'}
-											<svg
-												class="mr-1 h-3 w-3 text-green-600"
-												fill="currentColor"
-												viewBox="0 0 20 20"
-											>
-												<path
-													fill-rule="evenodd"
-													d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-													clip-rule="evenodd"
-												/>
+											<svg class="mr-1 h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
 											</svg>
 											Copied!
 										{:else}
-											<svg
-												class="mr-1 h-3 w-3"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-												/>
+											<svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
 											</svg>
 											Copy
 										{/if}
@@ -663,55 +774,55 @@
 									id="notes-field"
 									value={item.notes}
 									readonly
-									class="w-full cursor-pointer resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-									rows="3"
+									class="w-full cursor-pointer resize-none rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-900 transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+									rows="2"
 									on:click={() => copyToClipboard(item.notes ?? '', 'notes')}
 								></textarea>
 							</div>
 						{/if}
 
-						<!-- Metadata -->
-						<div class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-							<div class="text-center">
-								<div class="mb-1 text-xs font-medium text-gray-500">Created</div>
-								<div class="text-sm text-gray-900">{formatDate(item.createdAt)}</div>
+						<!-- Compact Metadata -->
+						<div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+							<div class="text-center p-2 rounded-md bg-gray-50/50">
+								<div class="flex items-center justify-center mb-1">
+									<svg class="h-3 w-3 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+									</svg>
+									<div class="text-xs font-medium text-gray-500">Created</div>
+								</div>
+								<div class="text-xs text-gray-900">{formatDate(item.createdAt)}</div>
 							</div>
-							<div class="text-center">
-								<div class="mb-1 text-xs font-medium text-gray-500">Last Updated</div>
-								<div class="text-sm text-gray-900">{formatDate(item.updatedAt)}</div>
+							<div class="text-center p-2 rounded-md bg-gray-50/50">
+								<div class="flex items-center justify-center mb-1">
+									<svg class="h-3 w-3 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+									</svg>
+									<div class="text-xs font-medium text-gray-500">Updated</div>
+								</div>
+								<div class="text-xs text-gray-900">{formatDate(item.updatedAt)}</div>
 							</div>
 						</div>
 					</div>
 
-					<!-- Actions Footer -->
-					<div class="rounded-b-3xl border-t border-gray-100 bg-gray-50 px-8 py-6">
-						<div class="flex items-center justify-between">
+					<!-- Compact Footer -->
+					<div class="border-t border-gray-100 bg-gray-50/50 px-6 py-3">
+						<div class="flex items-center justify-between space-x-3">
 							<button
 								on:click={handleEdit}
-								class="flex items-center rounded-lg bg-indigo-50 px-4 py-2 text-sm text-indigo-600 transition-colors hover:bg-indigo-100"
+								class="flex items-center rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-600 transition-all duration-200 hover:bg-indigo-100"
 							>
-								<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/>
+								<svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
 								</svg>
-								Edit Entry
+								Edit
 							</button>
 
 							<button
 								on:click={handleDelete}
-								class="flex items-center rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-100"
+								class="flex items-center rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 transition-all duration-200 hover:bg-red-100"
 							>
-								<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-									/>
+								<svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
 								</svg>
 								Delete
 							</button>
