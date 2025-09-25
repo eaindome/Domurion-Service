@@ -1,5 +1,5 @@
 import { API_BASE } from "./config";
-import type { UserSettings } from '$lib/types';
+import type { UserSettings, UserPreferences } from '$lib/types';
 import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // Fetch current user's settings (preferences)
@@ -15,6 +15,20 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 	return response.json();
 }
 
+// Fetch user preferences (including security settings)
+export async function fetchUserPreferences(): Promise<UserPreferences> {
+	const response = await fetchWithAuth(`${API_BASE}/api/user/preferences`, {
+		method: 'GET',
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		throw new Error('Failed to fetch user preferences');
+	}
+	const data = await response.json();
+	return data.preferences;
+}
+
 // Update current user's settings (preferences)
 export async function updateUserSettings(settings: UserSettings): Promise<UserSettings> {
 	const response = await fetchWithAuth(`${API_BASE}/api/user/preferences`, {
@@ -27,6 +41,21 @@ export async function updateUserSettings(settings: UserSettings): Promise<UserSe
 		throw new Error('Failed to update user settings');
 	}
 	return response.json();
+}
+
+// Update user preferences (including security settings)
+export async function updateUserPreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences> {
+	const response = await fetchWithAuth(`${API_BASE}/api/user/preferences`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(preferences),
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		throw new Error('Failed to update user preferences');
+	}
+	const data = await response.json();
+	return data.preferences;
 }
 
 // Generate password with custom options (all options optional)
@@ -48,7 +77,8 @@ export async function generatePassword(options?: {
 	const url = `${API_BASE}/api/user/preferences/generate-password` + (params.toString() ? `?${params.toString()}` : '');
 	const response = await fetchWithAuth(url, {
 		method: 'GET',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (!response.ok) {
 		throw new Error('Failed to generate password');
