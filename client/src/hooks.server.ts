@@ -1,6 +1,6 @@
 import type { Handle } from "@sveltejs/kit";
 import { jwtDecode } from "jwt-decode";
-import type { User } from "$lib/stores/authStore";
+import type { User } from "$lib/types/index";
 
 export const handle: Handle = async ({ event, resolve }) => {
     const token = event.cookies.get('access_token');
