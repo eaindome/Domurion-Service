@@ -1,11 +1,13 @@
 // API for shared credentials (invitations, accept/reject, list)
-import type { VaultEntry } from '$lib/types';
+import type { VaultEntry, ShareInvitation } from '$lib/types';
+import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // List credentials shared with the user (pending and accepted)
-export async function listSharedCredentials(): Promise<{ success: boolean; shared?: any[]; error?: string }> {
-	const response = await fetch('/api/vault/shared', {
+export async function listSharedCredentials(): Promise<{ success: boolean; shared?: VaultEntry[]; error?: string }> {
+	const response = await fetchWithAuth('/api/vault/shared', {
 		method: 'GET',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.ok) {
 		const data = await response.json();
@@ -22,12 +24,14 @@ export async function listSharedCredentials(): Promise<{ success: boolean; share
 	}
 }
 
-// Create a share invitation (by username or email)
-export async function createShareInvitation(credentialId: string, toIdentifier: string): Promise<{ success: boolean; invitation?: any; error?: string }> {
+
+
+export async function createShareInvitation(credentialId: string, toIdentifier: string): Promise<{ success: boolean; invitation?: ShareInvitation; error?: string }> {
 	const params = new URLSearchParams({ credentialId, toIdentifier });
-	const response = await fetch(`/api/vault/share?${params.toString()}`, {
+	const response = await fetchWithAuth(`/api/vault/share?${params.toString()}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.ok) {
 		const data = await response.json();
@@ -47,9 +51,10 @@ export async function createShareInvitation(credentialId: string, toIdentifier: 
 // Accept a share invitation
 export async function acceptShareInvitation(invitationId: string): Promise<{ success: boolean; credential?: VaultEntry; error?: string }> {
 	const params = new URLSearchParams({ invitationId });
-	const response = await fetch(`/api/vault/share/accept?${params.toString()}`, {
+	const response = await fetchWithAuth(`/api/vault/share/accept?${params.toString()}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.ok) {
 		const data = await response.json();
@@ -69,9 +74,10 @@ export async function acceptShareInvitation(invitationId: string): Promise<{ suc
 // Reject a share invitation
 export async function rejectShareInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
 	const params = new URLSearchParams({ invitationId });
-	const response = await fetch(`/api/vault/share/reject?${params.toString()}`, {
+	const response = await fetchWithAuth(`/api/vault/share/reject?${params.toString()}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' }
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
 	});
 	if (response.ok) {
 		return { success: true };

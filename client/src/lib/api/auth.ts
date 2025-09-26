@@ -1,9 +1,10 @@
 import { API_BASE } from "./config";
+import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // Helper to set JWT token in cookies
 function setTokenCookie(token: string) {
     // Set cookie for 7 days, secure, sameSite strict
-    document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; secure; samesite=strict`;
+    document.cookie = `access_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=strict`; // secure; 
 }
 
 // Redirects user to backend Google OAuth endpoint
@@ -23,10 +24,10 @@ export function handleGoogleOAuthRedirect() {
     return token;
 }
 
-export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string }; message?: string }> {
+export async function login(email: string, password: string): Promise<{ success: boolean; user?: { id: string; email: string; name?: string, username?: string }; message?: string }> {
     let response;
     try {
-        response = await fetch(`${API_BASE}/api/users/login`, {
+        response = await fetchWithAuth(`${API_BASE}/api/users/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -66,7 +67,7 @@ export async function login(email: string, password: string): Promise<{ success:
 }
 
 export async function register(email: string, password: string, name?: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/register`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/users/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name: name ?? '' })
@@ -97,7 +98,7 @@ export async function register(email: string, password: string, name?: string): 
 }
 
 export async function verifyEmail(token: string): Promise<{ success: boolean; message?: string }> {
-    const response = await fetch(`${API_BASE}/api/users/verify-email?token=${encodeURIComponent(token)}`, {
+    const response = await fetchWithAuth(`${API_BASE}/api/users/verify-email?token=${encodeURIComponent(token)}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
     });

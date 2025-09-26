@@ -4,9 +4,9 @@
 	import type { VaultEntryErrors } from '$lib/types';
 
 	export let formData: {
-		siteName: string;
-		url?: string;
-		username: string;
+		site: string;
+		siteUrl?: string;
+		email: string;
 		password: string;
 		notes?: string;
 	};
@@ -77,7 +77,7 @@
 
 		// Auto-add https:// if user enters a domain without protocol
 		if (value && !value.includes('://') && value.includes('.')) {
-			formData.url = `https://${value}`;
+			formData.siteUrl = `https://${value}`;
 		}
 	}
 
@@ -100,16 +100,16 @@
 		<input
 			type="text"
 			id="siteName"
-			bind:value={formData.siteName}
+			bind:value={formData.site}
 			on:keydown={(e) => handleKeyDown(e, 'url')}
 			placeholder="e.g., Google, GitHub, Facebook"
 			class="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3.5 placeholder-gray-400 transition-colors duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-			class:border-red-300={errors.siteName}
-			class:focus:ring-red-500={errors.siteName}
-			class:focus:border-red-500={errors.siteName}
-			class:border-indigo-200={formData.siteName && !errors.siteName}
+			class:border-red-300={errors.site}
+			class:focus:ring-red-500={errors.site}
+			class:focus:border-red-500={errors.site}
+			class:border-indigo-200={formData.site && !errors.site}
 		/>
-		{#if errors.siteName}
+		{#if errors.site}
 			<p class="flex items-center space-x-1 text-sm text-red-600">
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -119,7 +119,7 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					></path>
 				</svg>
-				<span>{errors.siteName}</span>
+				<span>{errors.site}</span>
 			</p>
 		{/if}
 	</div>
@@ -133,33 +133,33 @@
 		<input
 			type="url"
 			id="url"
-			bind:value={formData.url}
+			bind:value={formData.siteUrl}
 			on:blur={handleUrlInput}
 			on:keydown={(e) => handleKeyDown(e, 'username')}
 			placeholder="https://example.com"
 			class="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3.5 placeholder-gray-400 transition-colors duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-			class:border-indigo-200={formData.url}
+			class:border-indigo-200={formData.siteUrl}
 		/>
 	</div>
 
 	<!-- Username/Email -->
 	<div class="space-y-2">
-		<label for="username" class="mb-1 block text-sm font-semibold text-gray-800">
-			Username/Email *
+		<label for="email" class="mb-1 block text-sm font-semibold text-gray-800">
+			Email *
 		</label>
 		<input
 			type="text"
-			id="username"
-			bind:value={formData.username}
+			id="email"
+			bind:value={formData.email}
 			on:keydown={(e) => handleKeyDown(e, 'password')}
 			placeholder="your-username or email@example.com"
 			class="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3.5 placeholder-gray-400 transition-colors duration-150 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-			class:border-red-300={errors.username}
-			class:focus:ring-red-500={errors.username}
-			class:focus:border-red-500={errors.username}
-			class:border-indigo-200={formData.username && !errors.username}
+			class:border-red-300={errors.email}
+			class:focus:ring-red-500={errors.email}
+			class:focus:border-red-500={errors.email}
+			class:border-indigo-200={formData.email && !errors.email}
 		/>
-		{#if errors.username}
+		{#if errors.email}
 			<p class="flex items-center space-x-1 text-sm text-red-600">
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -169,7 +169,7 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					></path>
 				</svg>
-				<span>{errors.username}</span>
+				<span>{errors.email}</span>
 			</p>
 		{/if}
 	</div>

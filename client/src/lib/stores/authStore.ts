@@ -1,4 +1,6 @@
+/* eslint-disable svelte/no-navigation-without-resolve */
 import { writable } from 'svelte/store';
+import { goto } from '$app/navigation';
 
 export interface User {
 	id: string;
@@ -61,6 +63,22 @@ function createAuthStore() {
 		}
 	}
 
+	async function validateSession() {
+		const result = await fetchCurrentUser();
+		if (!result.success || !result.user) {
+			set(initialState);
+			await goto('/login');
+		} else {
+			update((state) => ({
+				...state,
+				user: result.user ?? null,
+				isAuthenticated: true,
+				loading: false,
+				error: null
+			}));
+		}
+	}
+
 	return {
 		subscribe,
 		setUser: (user: User) =>
@@ -69,7 +87,8 @@ function createAuthStore() {
 		setLoading: (loading: boolean) => update((state) => ({ ...state, loading })),
 		setError: (error: string | null) => update((state) => ({ ...state, error, loading: false })),
 		logout: () => set(initialState),
-		hydrateAuth
+		hydrateAuth,
+		validateSession
 	};
 }
 

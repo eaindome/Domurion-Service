@@ -61,6 +61,7 @@
 	onMount(() => {
 		// Hydrate auth state from cookie/session on app load
 		authStore.hydrateAuth();
+		authStore.validateSession();
 
 		let autoLockValue;
 		const unsubscribe = settings.subscribe((s) => (autoLockValue = s.autoLock));

@@ -10,9 +10,9 @@
 
 	// Form data
 	let formData = {
-		siteName: '',
-		url: '',
-		username: '',
+		site: '',
+		siteUrl: '',
+		email: '',
 		password: '',
 		notes: ''
 	};
@@ -22,22 +22,28 @@
 
 	// Handle form submission
 	async function handleSubmit() {
+		console.log(`Submitting`);
 		errors = validateVaultEntry(formData);
 		if (Object.keys(errors).length > 0) return;
 		isSubmitting = true;
+		console.log(`Form data: ${JSON.stringify(formData)}`);
+		console.log(`isSubmitting: ${isSubmitting}`);
+		console.log('Getting user id');
 		let userId: string | undefined;
 		const unsubscribe = authStore.subscribe((state) => {
 			userId = state.user?.id;
 		});
+		console.log(`userId: ${userId}`);
 		unsubscribe();
 		if (!userId) {
 			toast.show('User not authenticated', 'error');
 			isSubmitting = false;
 			return;
 		}
+		console.log(`Adding vault entry for userId: ${userId}`);
 		try {
-			const { siteName, username, password, notes } = formData;
-			const result = await addVaultEntry(userId, siteName, username, password, notes);
+			const { site, siteUrl, email, password, notes } = formData;
+			const result = await addVaultEntry(userId, site, email, password, notes, siteUrl);
 			if (result.success) {
 				toast.show('Entry saved successfully', 'success');
 				goto('/dashboard');

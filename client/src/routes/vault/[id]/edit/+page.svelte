@@ -24,12 +24,12 @@
 
 	// Form data
 	let formData: {
-		siteName: string;
-		url?: string;
-		username: string;
+		site: string;
+		siteUrl?: string;
+		email: string;
 		password: string;
 		notes?: string;
-	} = { siteName: '', url: '', username: '', password: '', notes: '' };
+	} = { site: '', siteUrl: '', email: '', password: '', notes: '' };
 
 	let originalData = {};
 	let isSubmitting = false;
@@ -43,17 +43,20 @@
 	onMount(async () => {
 		try {
 			const result = await getVaultEntry(entryId, userId);
+			console.log(`Load entry result: ${JSON.stringify(result)}`);
 			if (result.success && result.entry) {
 				formData = { ...result.entry };
+				console.log(`Form data loaded: ${JSON.stringify(formData)}`);
 				originalData = { ...result.entry };
+				console.log(`Original data set: ${JSON.stringify(originalData)}`);
 			} else {
 				// Entry not found or error
 				toast.show('Entry not found', 'error');
-				setTimeout(() => goto('/dashboard'), 2000);
+				// setTimeout(() => goto('/dashboard'), 2000);
 			}
 		} catch (error) {
 			console.error('Error loading entry:', error);
-			goto('/dashboard');
+			// goto('/dashboard');
 		} finally {
 			isLoading = false;
 		}
@@ -71,8 +74,9 @@
 			const result = await updateVaultEntry(
 				entryId,
 				userId,
-				formData.siteName,
-				formData.username,
+				formData.site,
+				formData.siteUrl,
+				formData.email,
 				formData.password,
 				formData.notes
 			);
@@ -127,7 +131,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit Entry - {formData.siteName || 'Vault'}</title>
+	<title>Edit Entry - {formData.site || 'Vault'}</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
@@ -345,7 +349,7 @@
 				</div>
 				<p class="mb-7 text-center text-base text-gray-700">
 					Are you sure you want to delete <span class="font-semibold text-gray-900"
-						>"{formData.siteName}"</span
+						>"{formData.site}"</span
 					>?<br />
 					<span class="font-semibold text-red-600">This action cannot be undone.</span>
 				</p>
