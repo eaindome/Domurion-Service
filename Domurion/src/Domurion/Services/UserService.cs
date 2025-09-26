@@ -9,7 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
         private readonly EmailService _emailService = emailService;
-
+           
         #region User management
         public User Register(string email, string password, string? name = null, string? username = null)
         {
@@ -139,6 +139,55 @@ namespace Domurion.Services
         }
         #endregion
 
+        #region Password Reset
+         public User? GetByPasswordResetToken(string token)
+        {
+            return _context.Users.FirstOrDefault(u => u.PasswordResetToken == token);
+        }
+
+        public void UpdatePassword(User user, string newPassword)
+        {
+            if (!Helper.IsStrongPassword(newPassword))
+                throw new ArgumentException("Password does not meet strength requirements.");
+
+            // Check password history (last 5)
+            var newHash = Helper.HashPassword(newPassword);
+            var history = _context.PasswordHistories
+                .Where(h => h.UserId == user.Id)
+                .OrderByDescending(h => h.ChangedAt)
+                .Take(5)
+                .Select(h => h.PasswordHash)
+                .ToList();
+            history.Add(user.PasswordHash);
+            foreach (var oldHash in history)
+            {
+                if (Helper.VerifyPassword(newPassword, oldHash))
+                    throw new ArgumentException("You cannot reuse your previous 5 passwords.");
+            }
+
+            // Store old password in history
+            _context.PasswordHistories.Add(new PasswordHistory
+            {
+                UserId = user.Id,
+                PasswordHash = user.PasswordHash,
+                ChangedAt = DateTime.UtcNow
+            });
+
+            // Keep only last 5 history entries
+            var allHistory = _context.PasswordHistories
+                .Where(h => h.UserId == user.Id)
+                .OrderByDescending(h => h.ChangedAt)
+                .ToList();
+            if (allHistory.Count > 5)
+            {
+                var toRemove = allHistory.Skip(5).ToList();
+                _context.PasswordHistories.RemoveRange(toRemove);
+            }
+
+            user.PasswordHash = newHash;
+            _context.SaveChanges();
+        }
+        #endregion
         #region User details
         public User? GetByUsername(string username)
         {

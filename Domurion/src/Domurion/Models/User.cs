@@ -40,5 +40,9 @@ namespace Domurion.Models
 
         public string? PendingOtp { get; set; }
         public DateTime? PendingOtpExpiresAt { get; set; }
+
+        // Password reset functionality
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiresAt { get; set; }
     }
 }

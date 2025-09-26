@@ -349,6 +349,55 @@ namespace Domurion.Controllers
             return Ok(new { user.Id, user.Username, token });
         }
 
+        [HttpPost("resend-otp")]
+        [AllowAnonymous]
+        public IActionResult ResendOtp([FromBody] string email)
+        {
+            var user = _userService.GetByEmail(email);
+            if (user == null || !user.TwoFactorEnabled)
+                return NotFound(new { error = "User not found or 2FA not enabled." });
+
+            // Generate new OTP
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.PendingOtp = otp;
+            user.PendingOtpExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            _userService.Save(user);
+
+            // send OTP via email using template
+            var subject = "Your login OTP";
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+            var userAgent = Request.Headers.UserAgent.ToString();
+            string location = "Unknown";
+            try
+            {
+                using var httpClient = new HttpClient();
+                var response = httpClient.GetStringAsync($"http://ip-api.com/json/{ip}").Result;
+                var geo = JsonDocument.Parse(response);
+                if (geo.RootElement.GetProperty("status").GetString() == "success")
+                {
+                    var city = geo.RootElement.GetProperty("city").GetString() ?? "Unknown";
+                    var country = geo.RootElement.GetProperty("country").GetString() ?? "Unknown";
+                    location = $"{city}, {country}";
+                }
+            }
+            catch { /* Ignore geo-IP errors */ }
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "OTP_CODE", otp },
+                { "LOGIN_TIME", time },
+                { "IP_ADDRESS", ip },
+                { "LOCATION", location },
+                { "USER_AGENT", userAgent }
+            };
+            var templatePath = "Templates/Email/login_otp.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
+            _emailService.SendEmail(user.Email, subject, body, isHtml: true);
+
+            return Ok(new { message = "OTP sent to your email." });
+        }
+
         [HttpPost("request-view-otp")]
         [Authorize]
         public IActionResult RequestViewOtp(Guid credentialId)
@@ -430,15 +479,56 @@ namespace Domurion.Controllers
         }
         #endregion
 
-        // #region Password generation
-        // [HttpGet("generate-password")]
-        // [Authorize]
-        // public IActionResult GeneratePassword([FromQuery] int length = 16)
-        // {
-        //     var password = Helper.GeneratePassword(length);
-        //     return Ok(new { password });
-        // }
-        // #endregion
+        #region Password reset
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public IActionResult ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+        {
+            var user = _userService.GetByPasswordResetToken(resetPasswordDto.Token);
+            if (user == null || user.PasswordResetTokenExpiresAt == null || user.PasswordResetTokenExpiresAt < DateTime.UtcNow)
+                return BadRequest(new { error = "Invalid or expired token." });
+
+            if (!Helper.IsStrongPassword(resetPasswordDto.NewPassword))
+                return BadRequest(new { error = "Password does not meet strength requirements." });
+
+            // Update password and clear token
+            _userService.UpdatePassword(user, resetPasswordDto.NewPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiresAt = null;
+            _userService.Save(user);
+
+            return Ok(new { message = "Password has been reset successfully." });
+        }
+
+        [HttpPost("request-password-reset")]
+        [AllowAnonymous]
+        public IActionResult RequestPasswordReset([FromBody] string email)
+        {
+            var user = _userService.GetByEmail(email);
+            if (user == null)
+                return Ok(new { message = "If the email exists, a password reset link will be sent." }); // Don't reveal existence
+
+            // Generate token and expiration
+            user.PasswordResetToken = Guid.NewGuid().ToString("N");
+            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+            _userService.Save(user);
+
+            // Send password reset email
+            var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+            var resetUrl = $"{frontendUrl}/reset-password?token={user.PasswordResetToken}";
+            var subject = "Reset your password";
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "RESET_URL", resetUrl }
+            };
+            var templatePath = "Templates/Email/password_reset.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
+            _emailService.SendEmail(user.Email, subject, body, isHtml: true);
+
+            return Ok(new { message = "If the email exists, a password reset link will be sent." });
+        }
+        #endregion
 
         #region Linking accounts
         [HttpPost("link-google")]
