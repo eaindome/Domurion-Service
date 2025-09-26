@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CloudinaryDotNet" Version="1.27.7" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Fido2" Version="4.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.9" />

@@ -21,6 +21,8 @@ namespace Domurion.Models
             set => _passwordHash = value ?? throw new ArgumentNullException(nameof(PasswordHash));
         }
 
+        public string? ProfilePictureUrl { get; set; }
+
         public string? AuthProvider { get; set; }
 
         // For account linking: store Google unique ID if linked
@@ -38,5 +40,9 @@ namespace Domurion.Models
 
         public string? PendingOtp { get; set; }
         public DateTime? PendingOtpExpiresAt { get; set; }
+
+        // Password reset functionality
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiresAt { get; set; }
     }
 }

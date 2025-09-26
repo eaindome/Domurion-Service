@@ -3,6 +3,7 @@ using System;
 using Domurion.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Domurion.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250924110729_AddProfilePicture")]
+    partial class AddProfilePicture
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,12 +245,6 @@ namespace Domurion.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("PasswordResetToken")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("PendingOtp")
                         .HasColumnType("text");
 
@@ -284,13 +281,7 @@ namespace Domurion.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("AutoLockEnabled")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("AutoSaveEntries")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("LoginNotificationsEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<int>("PasswordLength")

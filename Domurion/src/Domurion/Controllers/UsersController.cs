@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Domurion.Services;
 using System.Text.Json;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
 namespace Domurion.Controllers
 {
@@ -28,7 +30,8 @@ namespace Domurion.Controllers
             {
                 var username = userDto.Email.Split('@')[0];
                 var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
-                var verificationUrl = $"https://domurion-service.vercel.app/verify?{user.EmailVerificationToken}";
+                var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+                var verificationUrl = $"{frontendUrl}/verify?{user.EmailVerificationToken}";
                 var subject = "Verify your email address";
                 // Render verification template
                 var placeholders = new Dictionary<string, string>
@@ -69,6 +72,7 @@ namespace Domurion.Controllers
                 user.Email,
                 user.Username,
                 user.Name,
+                user.ProfilePictureUrl,
                 user.AuthProvider,
                 user.GoogleId,
                 user.TwoFactorEnabled
@@ -77,15 +81,43 @@ namespace Domurion.Controllers
 
         [HttpPut("update")]
         [Authorize]
-        public IActionResult Update(Guid userId, string? newUsername, string? newPassword)
+        public async Task<IActionResult> Update([FromForm] UpdateUserDto updateUserDto, IFormFile? profilePicture)
         {
             try
             {
-                // Accept name as an optional query parameter for update
-                var name = Request.Query["name"].ToString();
-                if (string.IsNullOrWhiteSpace(name)) name = null;
-                var user = _userService.UpdateUser(userId, newUsername, newPassword, name);
-                return Ok(new { user.Id, user.Username, user.Name });
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized(new { message = "User not found." });
+                
+                var user = _userService.UpdateUser(Guid.Parse(userId), updateUserDto.NewUsername, updateUserDto.NewPassword, updateUserDto.Name);
+                if (profilePicture != null && profilePicture.Length > 0)
+                {
+                // Cloudinary configuration (use your actual credentials)
+                var cloudinary = new Cloudinary(new Account(
+                    Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME"),
+                    Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY"),
+                    Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")
+                ));
+
+                // Upload to Cloudinary
+                var uploadParams = new ImageUploadParams()
+                {
+                    File = new FileDescription(profilePicture.FileName, profilePicture.OpenReadStream()),
+                    PublicId = $"profile_pictures/{Guid.NewGuid()}"
+                };
+                var uploadResult = await cloudinary.UploadAsync(uploadParams);
+
+                if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    user.ProfilePictureUrl = uploadResult.SecureUrl.ToString();
+                    _userService.Save(user);
+                }
+                else
+                {
+                    return BadRequest(new { error = "Failed to upload profile picture." });
+                }
+            }
+                return Ok(new { user.Id, user.Username, user.Name, user.ProfilePictureUrl });
             }
             catch (KeyNotFoundException ex)
             {
@@ -103,11 +135,14 @@ namespace Domurion.Controllers
 
         [HttpDelete("delete")]
         [Authorize]
-        public IActionResult Delete(Guid userId)
+        public IActionResult Delete()
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User not found." });
             try
             {
-                _userService.DeleteUser(userId);
+                _userService.DeleteUser(Guid.Parse(userId));
                 return NoContent();
             }
             catch (KeyNotFoundException ex)
@@ -115,6 +150,37 @@ namespace Domurion.Controllers
                 return NotFound(new { error = ex.Message });
             }
         }
+
+        // Incase I'd ever need it
+        // [HttpPost("profile-picture")]
+        // [Authorize]
+        // public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+        // {
+        //     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //     if (string.IsNullOrEmpty(userId)) return Unauthorized(new { message = "User not found." });
+
+        //     if (file == null || file.Length == 0)
+        //         return BadRequest(new { error = "No file uploaded." });
+
+        //     // Save file to wwwroot/uploads (ensure this folder exists and is writable)
+        //     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        //     Directory.CreateDirectory(uploadsFolder);
+        //     var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        //     var filePath = Path.Combine(uploadsFolder, fileName);
+
+        //     using (var stream = new FileStream(filePath, FileMode.Create))
+        //     {
+        //         await file.CopyToAsync(stream);
+        //     }
+
+        //     // Update user profile picture URL
+        //     var user = _userService.GetById(Guid.Parse(userId));
+        //     if (user == null) return NotFound(new { error = "User not found." });
+        //     user.ProfilePictureUrl = $"/uploads/{fileName}";
+        //     _userService.Save(user);
+
+        //     return Ok(new { url = user.ProfilePictureUrl });
+        // }
         #endregion
 
         #region Authentications
@@ -283,6 +349,55 @@ namespace Domurion.Controllers
             return Ok(new { user.Id, user.Username, token });
         }
 
+        [HttpPost("resend-otp")]
+        [AllowAnonymous]
+        public IActionResult ResendOtp([FromBody] string email)
+        {
+            var user = _userService.GetByEmail(email);
+            if (user == null || !user.TwoFactorEnabled)
+                return NotFound(new { error = "User not found or 2FA not enabled." });
+
+            // Generate new OTP
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.PendingOtp = otp;
+            user.PendingOtpExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            _userService.Save(user);
+
+            // send OTP via email using template
+            var subject = "Your login OTP";
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+            var userAgent = Request.Headers.UserAgent.ToString();
+            string location = "Unknown";
+            try
+            {
+                using var httpClient = new HttpClient();
+                var response = httpClient.GetStringAsync($"http://ip-api.com/json/{ip}").Result;
+                var geo = JsonDocument.Parse(response);
+                if (geo.RootElement.GetProperty("status").GetString() == "success")
+                {
+                    var city = geo.RootElement.GetProperty("city").GetString() ?? "Unknown";
+                    var country = geo.RootElement.GetProperty("country").GetString() ?? "Unknown";
+                    location = $"{city}, {country}";
+                }
+            }
+            catch { /* Ignore geo-IP errors */ }
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "OTP_CODE", otp },
+                { "LOGIN_TIME", time },
+                { "IP_ADDRESS", ip },
+                { "LOCATION", location },
+                { "USER_AGENT", userAgent }
+            };
+            var templatePath = "Templates/Email/login_otp.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
+            _emailService.SendEmail(user.Email, subject, body, isHtml: true);
+
+            return Ok(new { message = "OTP sent to your email." });
+        }
+
         [HttpPost("request-view-otp")]
         [Authorize]
         public IActionResult RequestViewOtp(Guid credentialId)
@@ -364,13 +479,54 @@ namespace Domurion.Controllers
         }
         #endregion
 
-        #region Password generation
-        [HttpGet("generate-password")]
-        [Authorize]
-        public IActionResult GeneratePassword([FromQuery] int length = 16)
+        #region Password reset
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public IActionResult ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
         {
-            var password = Helper.GeneratePassword(length);
-            return Ok(new { password });
+            var user = _userService.GetByPasswordResetToken(resetPasswordDto.Token);
+            if (user == null || user.PasswordResetTokenExpiresAt == null || user.PasswordResetTokenExpiresAt < DateTime.UtcNow)
+                return BadRequest(new { error = "Invalid or expired token." });
+
+            if (!Helper.IsStrongPassword(resetPasswordDto.NewPassword))
+                return BadRequest(new { error = "Password does not meet strength requirements." });
+
+            // Update password and clear token
+            _userService.UpdatePassword(user, resetPasswordDto.NewPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiresAt = null;
+            _userService.Save(user);
+
+            return Ok(new { message = "Password has been reset successfully." });
+        }
+
+        [HttpPost("request-password-reset")]
+        [AllowAnonymous]
+        public IActionResult RequestPasswordReset([FromBody] string email)
+        {
+            var user = _userService.GetByEmail(email);
+            if (user == null)
+                return Ok(new { message = "If the email exists, a password reset link will be sent." }); // Don't reveal existence
+
+            // Generate token and expiration
+            user.PasswordResetToken = Guid.NewGuid().ToString("N");
+            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+            _userService.Save(user);
+
+            // Send password reset email
+            var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+            var resetUrl = $"{frontendUrl}/reset-password?token={user.PasswordResetToken}";
+            var subject = "Reset your password";
+            var placeholders = new Dictionary<string, string>
+            {
+                { "USER_EMAIL", user.Email },
+                { "RESET_URL", resetUrl }
+            };
+            var templatePath = "Templates/Email/password_reset.html";
+            var body = _emailService.RenderTemplate(templatePath, placeholders);
+            _emailService.SendEmail(user.Email, subject, body, isHtml: true);
+
+            return Ok(new { message = "If the email exists, a password reset link will be sent." });
         }
         #endregion
 
@@ -404,7 +560,7 @@ namespace Domurion.Controllers
 
         #region Helpers
         // Private helper for login notification email
-        private async Task SendLoginNotificationEmailAsync(Domurion.Models.User user, string subject)
+        private async Task SendLoginNotificationEmailAsync(Models.User user, string subject)
         {
             try
             {
