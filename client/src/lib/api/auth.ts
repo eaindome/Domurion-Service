@@ -219,4 +219,92 @@ export async function verifyEmail(token: string): Promise<{ success: boolean; me
     }
 }
 
+export async function requestPasswordReset(email: string): Promise<{ 
+    success: boolean; 
+    message?: string; 
+}> {
+    let response;
+    try {
+        response = await fetchWithAuth(`${API_BASE}/api/users/request-password-reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(email)
+        });
+    } catch (err) {
+        console.log(`Error during password reset request fetch: ${err}`);
+        return { success: false, message: 'Network error during password reset request' };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'Unexpected response from server.' };
+    }
+
+    if (response.ok) {
+        try {
+            const data = await response.json();
+            return { 
+                success: true, 
+                message: data.message || 'If the email exists, a password reset link will be sent.' 
+            };
+        } catch (err) {
+            console.log(`Error parsing password reset request response: ${err}`);
+            return { success: true, message: 'If the email exists, a password reset link will be sent.' };
+        }
+    } else {
+        let errorMsg = 'Unknown error';
+        try {
+            const data = await response.json();
+            errorMsg = data.error || data.message || errorMsg;
+        } catch (err) {
+            console.log(`Error requesting password reset: ${err}`);
+        }
+        return { success: false, message: errorMsg };
+    }
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ 
+    success: boolean; 
+    message?: string; 
+}> {
+    let response;
+    try {
+        response = await fetchWithAuth(`${API_BASE}/api/users/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, newPassword })
+        });
+    } catch (err) {
+        console.log(`Error during password reset fetch: ${err}`);
+        return { success: false, message: 'Network error during password reset' };
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, message: 'Unexpected response from server.' };
+    }
+
+    if (response.ok) {
+        try {
+            const data = await response.json();
+            return { 
+                success: true, 
+                message: data.message || 'Password has been reset successfully.' 
+            };
+        } catch (err) {
+            console.log(`Error parsing password reset response: ${err}`);
+            return { success: true, message: 'Password has been reset successfully.' };
+        }
+    } else {
+        let errorMsg = 'Unknown error';
+        try {
+            const data = await response.json();
+            errorMsg = data.error || data.message || errorMsg;
+        } catch (err) {
+            console.log(`Error resetting password: ${err}`);
+        }
+        return { success: false, message: errorMsg };
+    }
+}
+
 
