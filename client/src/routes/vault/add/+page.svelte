@@ -43,7 +43,7 @@
 		console.log(`Adding vault entry for userId: ${userId}`);
 		try {
 			const { site, siteUrl, email, password, notes } = formData;
-			const result = await addVaultEntry(userId, site, email, password, notes, siteUrl);
+			const result = await addVaultEntry(site, email, password, notes, siteUrl);
 			if (result.success) {
 				toast.show('Entry saved successfully', 'success');
 				goto('/dashboard');

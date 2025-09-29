@@ -30,7 +30,7 @@
     async function loadSharedItems() {
         isLoading = true;
         try {
-            const result = await listSharedVaultEntries(user.id);
+            const result = await listSharedVaultEntries();
 			if (result.success && result.entries) {
 				sharedItems = result.entries.map((entry) => ({
 					id: String(entry.id),

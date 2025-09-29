@@ -34,7 +34,7 @@
 	// Load existing entry data
 	onMount(async () => {
 		try {
-			const result = await getVaultEntry(entryId, userId);
+			const result = await getVaultEntry(entryId);
 			console.log(`Load entry result: ${JSON.stringify(result)}`);
 			if (result.success && result.entry) {
 				formData = { ...result.entry };
@@ -65,7 +65,6 @@
 		try {
 			const result = await updateVaultEntry(
 				entryId,
-				userId,
 				formData.site,
 				formData.siteUrl,
 				formData.email,
@@ -90,7 +89,7 @@
 	async function handleDelete() {
 		isDeleting = true;
 		try {
-			const result = await deleteVaultEntry(entryId, userId);
+			const result = await deleteVaultEntry(entryId);
 			if (result.success) {
 				toast.show('Entry deleted successfully', 'success');
 				goto('/dashboard');

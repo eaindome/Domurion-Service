@@ -19,6 +19,7 @@
 	let showDeleteModal = false;
 	let itemToDelete: VaultItem | null = null;
 	let isLoading = false;
+	let isDeletingItem = false;
 
 	// User info will be loaded from auth store
 	let user = { email: '', name: '', id: '', username: '' };
@@ -65,13 +66,13 @@
 		isLoading = true;
 		try {
 			if (!$authStore.user?.id) {
-				console.log(`User data:`, $authStore.user);
+				// console.log(`User data:`, $authStore.user);
 				toast.show('User not authenticated', 'error');
 				return;
 			}
-			console.log(`Loading vault items for user ID: ${$authStore.user.id}`);
-			const result = await listVaultEntries($authStore.user.id);
-			console.log(`Vault items loaded:`, result);
+			// console.log(`Loading vault items for user ID: ${$authStore.user.id}`);
+			const result = await listVaultEntries();
+			// console.log(`Vault items loaded:`, result);
 			if (result.success && result.entries) {
 				vaultItems = result.entries.map((entry) => ({
 					id: String(entry.id),
@@ -102,7 +103,6 @@
 	function copyToClipboard(text: string, type: string) {
 		navigator.clipboard.writeText(text).then(() => {
 			toast.show('Copied to clipboard', 'success');
-			console.log(`${type} copied to clipboard`);
 		});
 	}
 
@@ -112,14 +112,14 @@
 	}
 
 	async function deleteItem() {
-		if (!itemToDelete) return;
-
+		if (!itemToDelete || isDeletingItem) return;
+		isDeletingItem = true;
 		try {
-			if (!user.id) {
+			if (!$authStore.user?.id) {
 				toast.show('User not authenticated', 'error');
 				return;
 			}
-			const result = await deleteVaultEntry(String(itemToDelete.id), user.id);
+			const result = await deleteVaultEntry(String(itemToDelete.id));
 			if (result.success) {
 				if (itemToDelete && itemToDelete.id != null) {
 					vaultItems = vaultItems.filter((item) => String(item.id) !== String(itemToDelete?.id));
@@ -133,6 +133,8 @@
 		} catch (error) {
 			console.error('Failed to delete item:', error);
 			toast.show('Failed to delete entry', 'error');
+		} finally {
+			isDeletingItem = false;
 		}
 	}
 
@@ -653,15 +655,24 @@
 						showDeleteModal = false;
 						itemToDelete = null;
 					}}
-					class="flex-1 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+					disabled={isDeletingItem}
+					class="flex-1 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Cancel
 				</button>
 				<button
 					on:click={deleteItem}
-					class="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+					disabled={isDeletingItem}
+					class="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center"
 				>
-					Delete
+					{#if isDeletingItem}
+						<svg class="mr-2 h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+						</svg>
+						Deleting...
+					{:else}
+						Delete
+					{/if}
 				</button>
 			</div>
 		</div>
