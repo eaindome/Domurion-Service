@@ -258,5 +258,36 @@ namespace Domurion.Services
             return true;
         }
         #endregion
+
+        #region User Settings
+        public void ResetUserSettings(string userId)
+        {
+            if (!Guid.TryParse(userId, out var userGuid))
+                throw new ArgumentException("Invalid user ID format.");
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userGuid) ?? throw new KeyNotFoundException("User not found.");
+
+            // Reset user's 2FA settings
+            user.TwoFactorEnabled = false;
+            user.PendingOtp = null;
+            user.PendingOtpExpiresAt = null;
+            
+            // Clear password reset tokens if any
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiresAt = null;
+
+            // Remove password history
+            var passwordHistory = _context.PasswordHistories.Where(h => h.UserId == userGuid).ToList();
+            if (passwordHistory.Count != 0)
+            {
+                _context.PasswordHistories.RemoveRange(passwordHistory);
+            }
+
+            _context.SaveChanges();
+
+            // Audit log
+            AuditLogger.Log(_context, userGuid, user.Email ?? string.Empty, null, "ResetUserSettings", null);
+        }
+        #endregion
     }
 }

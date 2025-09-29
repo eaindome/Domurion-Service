@@ -255,5 +255,35 @@ namespace Domurion.Services
             return accepted.Concat(pending).ToList();
         }
         #endregion
+
+        #region Bulk Operations
+        public int DeleteAllUserVaultItems(string userId)
+        {
+            if (!Guid.TryParse(userId, out var userGuid))
+                throw new ArgumentException("Invalid user ID format.");
+
+            var credentials = _context.Credentials.Where(c => c.UserId == userGuid).ToList();
+            var deletedCount = credentials.Count;
+
+            if (deletedCount > 0)
+            {
+                _context.Credentials.RemoveRange(credentials);
+
+                // Also remove any shared credential invitations
+                var invitations = _context.SharedCredentialInvitations
+                    .Where(i => i.FromUserId == userGuid || i.ToUserId == userGuid)
+                    .ToList();
+                _context.SharedCredentialInvitations.RemoveRange(invitations);
+
+                _context.SaveChanges();
+
+                // Audit log
+                var user = _context.Users.FirstOrDefault(u => u.Id == userGuid);
+                AuditLogger.Log(_context, userGuid, user?.Email ?? string.Empty, null, "DeleteAllVaultData", null, $"Deleted {deletedCount} credentials");
+            }
+
+            return deletedCount;
+        }
+        #endregion
     }
 }
