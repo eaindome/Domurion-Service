@@ -352,30 +352,6 @@
 					</p>
 				</div>
 			</div>
-
-			<!-- Additional Help -->
-			{#if status === 404}
-				<div class="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-					<h3 class="mb-3 text-sm font-medium text-gray-900">
-						Common pages you might be looking for:
-					</h3>
-					<div class="space-y-2">
-						// eslint-disable-next-line svelte/no-navigation-without-resolve,
-						svelte/no-useless-mustaches
-						<a href={'/dashboard'} class="block text-sm text-indigo-600 hover:text-indigo-500">
-							• Your Dashboard
-						</a>
-						// eslint-disable-next-line svelte/no-navigation-without-resolve, svelte/no-useless-mustaches
-						<a href={'/vault/add'} class="block text-sm text-indigo-600 hover:text-indigo-500">
-							• Add New Entry
-						</a>
-						// eslint-disable-next-line svelte/no-navigation-without-resolve, svelte/no-useless-mustaches
-						<a href={'/settings'} class="block text-sm text-indigo-600 hover:text-indigo-500">
-							• Account Settings
-						</a>
-					</div>
-				</div>
-			{/if}
 		</div>
 	</div>
 </div>
