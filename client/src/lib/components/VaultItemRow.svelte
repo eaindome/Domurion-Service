@@ -283,10 +283,10 @@
 			<span class="text-xs text-gray-500">Password:</span>
 			<span class="truncate font-mono text-sm text-gray-900">{maskPassword(item.password)}</span>
 			<button
-				on:click={() => handleCopy(item.password, 'Password')}
+				on:click={() => handleCopy(showPassword ? item.password : maskPassword(item.password), 'Password')}
 				class="text-gray-400 transition-colors hover:text-gray-600"
-				title="Copy password"
-				aria-label="Copy password"
+				title={showPassword ? "Copy password" : "Copy masked password (verify to copy actual password)"}
+				aria-label={showPassword ? "Copy password" : "Copy masked password"}
 			>
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -535,7 +535,7 @@
 										<span class="text-xs text-{passwordStrength.color}-600 font-medium">{passwordStrength.text}</span>
 									</div>
 									<button
-										on:click={() => copyToClipboard(item.password, 'password')}
+										on:click={() => copyToClipboard(showPassword ? item.password : maskPassword(item.password), 'password')}
 										class="flex items-center rounded-md px-2 py-1 text-xs text-gray-500 transition-all duration-200 hover:bg-indigo-50 hover:text-indigo-600"
 									>
 										{#if copiedField === 'password'}
@@ -559,7 +559,7 @@
 									value={item.password}
 									readonly
 									class="w-full cursor-pointer rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 pr-10 font-mono text-sm text-gray-900 transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-									on:click={() => copyToClipboard(item.password, 'password')}
+									on:click={() => copyToClipboard(showPassword ? item.password : maskPassword(item.password), 'password')}
 								/>
 								<button
 									on:click={handleShowPassword}
