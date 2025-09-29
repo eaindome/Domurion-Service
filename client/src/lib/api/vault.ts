@@ -3,8 +3,8 @@ import type { VaultEntry } from '$lib/types';
 import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 
 // Add vault entry
-export async function addVaultEntry(userId: string, site: string, email: string, password: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const params = new URLSearchParams({ userId, site, email, password, notes: notes || '', siteUrl: siteUrl || '' });
+export async function addVaultEntry(site: string, email: string, password: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const params = new URLSearchParams({ site, email, password, notes: notes || '', siteUrl: siteUrl || '' });
 	const response = await fetchWithAuth(`${API_BASE}/api/vault/add?${params.toString()}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -25,9 +25,9 @@ export async function addVaultEntry(userId: string, site: string, email: string,
 	}
 }
 
-// Fetch a specific vault entry by credentialId and userId
-export async function getVaultEntry(credentialId: string, userId: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+// Fetch a specific vault entry by credentialId
+export async function getVaultEntry(credentialId: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -48,8 +48,8 @@ export async function getVaultEntry(credentialId: string, userId: string): Promi
 }
 
 // List vault entries for user
-export async function listVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/list?userId=${encodeURIComponent(userId)}`, {
+export async function listVaultEntries(): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/list`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -71,8 +71,8 @@ export async function listVaultEntries(userId: string): Promise<{ success: boole
 }
 
 // Retrieve password for a vault entry
-export async function retrieveVaultPassword(credentialId: string, userId: string): Promise<{ success: boolean; password?: string; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+export async function retrieveVaultPassword(credentialId: string): Promise<{ success: boolean; password?: string; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/retrieve?credentialId=${encodeURIComponent(credentialId)}`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
@@ -93,8 +93,8 @@ export async function retrieveVaultPassword(credentialId: string, userId: string
 }
 
 // Update vault entry
-export async function updateVaultEntry(credentialId: string, userId: string, site?: string, username?: string, password?: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
-	const params = new URLSearchParams({ credentialId, userId });
+export async function updateVaultEntry(credentialId: string, site?: string, username?: string, password?: string, notes?: string, siteUrl?: string): Promise<{ success: boolean; entry?: VaultEntry; error?: string }> {
+	const params = new URLSearchParams({ credentialId });
 	if (site) params.append('site', site);
 	if (siteUrl) params.append('siteUrl', siteUrl);
 	if (username) params.append('username', username);
@@ -121,12 +121,13 @@ export async function updateVaultEntry(credentialId: string, userId: string, sit
 }
 
 // Delete vault entry
-export async function deleteVaultEntry(credentialId: string, userId: string): Promise<{ success: boolean; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/delete?credentialId=${encodeURIComponent(credentialId)}&userId=${encodeURIComponent(userId)}`, {
+export async function deleteVaultEntry(credentialId: string): Promise<{ success: boolean; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/delete?credentialId=${encodeURIComponent(credentialId)}`, {
 		method: 'DELETE',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
 	});
+	console.log(`Delete response status: ${response.status}`);
 	if (response.status === 204) {
 		return { success: true };
 	} else {
@@ -164,49 +165,75 @@ export async function shareVaultEntry(credentialId: string, fromUserId: string, 
 	}
 }
 
-// Export all vault entries (with passwords)
-export async function exportVault(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/export?userId=${encodeURIComponent(userId)}`);
+// Export all vault entries
+export async function exportVaultData(): Promise<{ success: boolean; data?: VaultEntry[]; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/export`, {
+		method: 'GET',
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
+	});
 	if (response.ok) {
-		const data = await response.json();
-		return { success: true, entries: data };
+		const data: VaultEntry[] = await response.json();
+		return { success: true, data };
 	} else {
 		let errorMsg = 'Unknown error';
 		try {
 			const data = await response.json();
 			errorMsg = data.error || data.message || errorMsg;
 		} catch (err) {
-			console.log(`Error exporting vault: ${err}`);
+			console.log(`Error exporting vault data: ${err}`);
 		}
 		return { success: false, error: errorMsg };
 	}
 }
 
-// Import vault entries
-export async function importVault(userId: string, credentials: { site: string; username: string; password: string }[]): Promise<{ success: boolean; results?: VaultEntry[]; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/import?userId=${encodeURIComponent(userId)}`, {
+// Import vault data
+export async function importVaultData(importData: VaultEntry[]): Promise<{ success: boolean; message?: string; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/import`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		credentials: 'include',
-		body: JSON.stringify(credentials)
+		body: JSON.stringify(importData),
+		credentials: 'include'
 	});
 	if (response.ok) {
 		const data = await response.json();
-		return { success: true, results: data };
+		return { success: true, message: data.message };
 	} else {
 		let errorMsg = 'Unknown error';
 		try {
 			const data = await response.json();
 			errorMsg = data.error || data.message || errorMsg;
 		} catch (err) {
-			console.log(`Error importing vault: ${err}`);
+			console.log(`Error importing vault data: ${err}`);
 		}
 		return { success: false, error: errorMsg };
 	}
 }
 
-export async function listSharedVaultEntries(userId: string): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
-	const response = await fetchWithAuth(`${API_BASE}/api/vault/shared?userId=${encodeURIComponent(userId)}`, {
+// Delete all vault data
+export async function deleteAllVaultData(): Promise<{ success: boolean; message?: string; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/delete-all`, {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include'
+	});
+	if (response.ok) {
+		const data = await response.json();
+		return { success: true, message: data.message };
+	} else {
+		let errorMsg = 'Unknown error';
+		try {
+			const data = await response.json();
+			errorMsg = data.error || data.message || errorMsg;
+		} catch (err) {
+			console.log(`Error deleting all vault data: ${err}`);
+		}
+		return { success: false, error: errorMsg };
+	}
+}
+
+export async function listSharedVaultEntries(): Promise<{ success: boolean; entries?: VaultEntry[]; error?: string }> {
+	const response = await fetchWithAuth(`${API_BASE}/api/vault/shared`, {
 		method: 'GET',
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
