@@ -27,5 +27,8 @@ namespace Domurion.Services.Interfaces
 
         User? GetByVerificationToken(string token);
         void Save(User user);
+
+        // Reset user settings
+        void ResetUserSettings(string userId);
     }
 }

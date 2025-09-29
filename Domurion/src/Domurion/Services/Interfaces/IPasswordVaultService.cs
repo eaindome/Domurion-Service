@@ -22,5 +22,8 @@ namespace Domurion.Services.Interfaces
 
         // Password sharing
         Credential ShareCredential(Guid credentialId, Guid fromUserId, string toUsername, string? ipAddress = null);
+
+        // Delete all user vault items
+        int DeleteAllUserVaultItems(string userId);
     }
 }
