@@ -7,7 +7,7 @@
 	import { deleteVaultEntry, updateVaultEntry, getVaultEntry } from '$lib/api/vault';
 	import { validateVaultEntry } from '$lib/validation/validations';
 	import VaultEntryForm from '$lib/components/VaultEntryForm.svelte';
-	import { authStore } from '../../../../lib/stores/authStore';
+	import { authStore } from '$lib/stores/authStore';
 
 	$: userId = $authStore.user?.id ?? '';
 

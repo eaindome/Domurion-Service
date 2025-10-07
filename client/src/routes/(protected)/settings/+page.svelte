@@ -45,6 +45,7 @@
 	};
 
 	let showUserMenu = false;
+	let showDeleteModal = false;
 	function setTimeoutMenuClose() {
 		setTimeout(() => (showUserMenu = false), 120);
 	}
@@ -121,30 +122,24 @@
 		isLoading = event.detail.isLoading;
 	}
 
-	async function deleteAccount() {
-		if (
-			confirm(
-				'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your vault entries.'
-			)
-		) {
-			if (
-				confirm(
-					'This will permanently delete ALL your passwords and data. Are you absolutely sure?'
-				)
-			) {
-				try {
-					const result = await deleteUser(user.id);
-					if (result.success) {
-						successMessage = 'Account deleted successfully.';
-						goto('/login');
-					} else {
-						errorMessage = result.message || 'Failed to delete account.';
-					}
-				} catch (error) {
-					errorMessage = 'Failed to delete account.';
-					console.error('Error deleting account:', error);
-				}
+	function openDeleteModal() {
+		showDeleteModal = true;
+	}
+
+	async function confirmDeleteAccount() {
+		try {
+			const result = await deleteUser(user.id);
+			if (result.success) {
+				successMessage = 'Account deleted successfully.';
+				goto('/login');
+			} else {
+				errorMessage = result.message || 'Failed to delete account.';
 			}
+		} catch (error) {
+			errorMessage = 'Failed to delete account.';
+			console.error('Error deleting account:', error);
+		} finally {
+			showDeleteModal = false;
 		}
 	}
 
@@ -469,18 +464,30 @@
 							on:loading={handleLoading}
 						/>
 						<!-- Delete Account Section -->
-						<div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-							<h3 class="mb-2 text-lg font-medium text-red-700">Delete Account</h3>
-							<p class="mb-4 text-sm text-red-600">
-								This action is irreversible. All your data will be permanently deleted.
-							</p>
-							<button
-								type="button"
-								on:click={deleteAccount}
-								class="rounded-xl bg-red-600 px-6 py-3 text-white transition-colors hover:bg-red-700"
-							>
-								Delete Account
-							</button>
+						<div class="mt-6 rounded-2xl border border-red-300 bg-red-100 p-6 shadow-sm">
+							<div class="flex items-start space-x-3">
+								<div class="flex-shrink-0">
+									<svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+									</svg>
+								</div>
+								<div class="flex-1">
+									<h3 class="mb-2 text-lg font-semibold text-red-800">Danger Zone</h3>
+									<p class="mb-4 text-sm text-red-700">
+										Once you delete your account, there is no going back. This will permanently delete your account, all vault entries, and cannot be undone.
+									</p>
+									<button
+										type="button"
+										on:click={openDeleteModal}
+										class="inline-flex items-center rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-red-700 hover:shadow-xl focus:ring-4 focus:ring-red-300 focus:outline-none"
+									>
+										<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+										</svg>
+										Delete Account
+									</button>
+								</div>
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -488,5 +495,48 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Custom Delete Account Confirmation Modal -->
+{#if showDeleteModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+		<div class="bg-white rounded-3xl shadow-2xl border border-gray-200 max-w-md w-full p-8 transform transition-all">
+			<!-- Warning Icon -->
+			<div class="flex items-center justify-center w-16 h-16 mx-auto mb-6 bg-red-100 rounded-full">
+				<svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+				</svg>
+			</div>
+			
+			<!-- Modal Content -->
+			<div class="text-center mb-8">
+				<h3 class="text-2xl font-bold text-gray-900 mb-3">Delete Account?</h3>
+				<p class="text-gray-600 leading-relaxed">
+					This will permanently delete <strong>ALL</strong> your passwords and data. Are you absolutely sure?
+				</p>
+			</div>
+			
+			<!-- Action Buttons -->
+			<div class="flex flex-col-reverse sm:flex-row gap-3">
+				<button
+					on:click={() => showDeleteModal = false}
+					class="flex-1 px-6 py-3 text-gray-700 bg-gray-100 rounded-xl font-medium transition-all duration-200 hover:bg-gray-200 focus:ring-4 focus:ring-gray-300 focus:outline-none"
+				>
+					Cancel
+				</button>
+				<button
+					on:click={confirmDeleteAccount}
+					class="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-medium transition-all duration-200 hover:bg-red-700 focus:ring-4 focus:ring-red-300 focus:outline-none shadow-lg hover:shadow-xl"
+				>
+					<span class="flex items-center justify-center">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+						</svg>
+						Delete Forever
+					</span>
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <Toast bind:this={toast} />
