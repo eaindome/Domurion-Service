@@ -9,7 +9,7 @@ namespace Domurion.Services
     {
         private readonly DataContext _context = context;
         private readonly EmailService _emailService = emailService;
-           
+
         #region User management
         public User Register(string email, string password, string? name = null, string? username = null)
         {
@@ -140,7 +140,7 @@ namespace Domurion.Services
         #endregion
 
         #region Password Reset
-         public User? GetByPasswordResetToken(string token)
+        public User? GetByPasswordResetToken(string token)
         {
             return _context.Users.FirstOrDefault(u => u.PasswordResetToken == token);
         }
@@ -271,7 +271,7 @@ namespace Domurion.Services
             user.TwoFactorEnabled = false;
             user.PendingOtp = null;
             user.PendingOtpExpiresAt = null;
-            
+
             // Clear password reset tokens if any
             user.PasswordResetToken = null;
             user.PasswordResetTokenExpiresAt = null;

@@ -15,12 +15,14 @@ namespace Domurion.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("fixed")]
-    public class UsersController(IUserService userService, PreferencesService preferencesService, PasswordVaultService passwordVaultService, EmailService emailService) : ControllerBase
+    public class UsersController(IUserService userService, PreferencesService preferencesService, PasswordVaultService passwordVaultService, EmailService emailService, Domurion.Helpers.IEmailQueue emailQueue, Data.DataContext context) : ControllerBase
     {
         private readonly IUserService _userService = userService;
         private readonly PreferencesService _preferencesService = preferencesService;
         private readonly PasswordVaultService _passwordVaultService = passwordVaultService;
         private readonly EmailService _emailService = emailService;
+        private readonly Domurion.Helpers.IEmailQueue _emailQueue = emailQueue;
+        private readonly Data.DataContext _context = context;
 
         #region User Management
         [HttpPost("register")]
@@ -29,20 +31,47 @@ namespace Domurion.Controllers
             try
             {
                 var username = userDto.Email.Split('@')[0];
+
+                // Begin a transaction so we can rollback if email sending fails
+                using var transaction = _context.Database.BeginTransaction();
+
                 var user = _userService.Register(userDto.Email, userDto.Password, userDto.Name, username);
                 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL_DEV");
                 var verificationUrl = $"{frontendUrl}/verify?{user.EmailVerificationToken}";
                 var subject = "Verify your email address";
-                // Render verification template
-                var placeholders = new Dictionary<string, string>
+
+                // Enqueue verification email; if enqueue fails, rollback user creation
+                try
                 {
-                    { "USER_EMAIL", user.Email },
-                    { "VERIFICATION_URL", verificationUrl }
-                };
-                var templatePath = "Templates/Email/verification.html";
-                var body = _emailService.RenderTemplate(templatePath, placeholders);
-                _emailService.SendEmail(user.Email, subject, body, isHtml: true);
-                return Ok(new { user.Id, user.Username, user.Name });
+                    var placeholders = new Dictionary<string, string>
+                    {
+                        { "USER_EMAIL", user.Email },
+                        { "VERIFICATION_URL", verificationUrl }
+                    };
+                    var templatePath = "Templates/Email/verification.html";
+                    var body = _emailService.RenderTemplate(templatePath, placeholders);
+
+                    var emailMessage = new EmailMessage(user.Email, subject, body, true);
+                    // Enqueue; this should be fast and non-blocking
+                    _emailQueue.EnqueueAsync(emailMessage).GetAwaiter().GetResult();
+
+                    // Enqueue succeeded — commit transaction and return success
+                    transaction.Commit();
+                    return Ok(new { user.Id, user.Username, user.Name });
+                }
+                catch (Exception enqueueEx)
+                {
+                    // Enqueue failed — rollback and remove created user
+                    try { transaction.Rollback(); } catch { }
+                    try
+                    {
+                        var existing = _userService.GetByEmail(user.Email);
+                        if (existing != null) _userService.DeleteUser(existing.Id);
+                    }
+                    catch { }
+
+                    return StatusCode(502, new { error = "Failed to enqueue verification email; registration aborted.", details = enqueueEx.Message });
+                }
             }
             catch (ArgumentException ex)
             {
@@ -88,35 +117,35 @@ namespace Domurion.Controllers
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userId))
                     return Unauthorized(new { message = "User not found." });
-                
+
                 var user = _userService.UpdateUser(Guid.Parse(userId), updateUserDto.NewUsername, updateUserDto.NewPassword, updateUserDto.Name);
                 if (profilePicture != null && profilePicture.Length > 0)
                 {
-                // Cloudinary configuration (use your actual credentials)
-                var cloudinary = new Cloudinary(new Account(
-                    Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME"),
-                    Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY"),
-                    Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")
-                ));
+                    // Cloudinary configuration (use your actual credentials)
+                    var cloudinary = new Cloudinary(new Account(
+                        Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME"),
+                        Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY"),
+                        Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")
+                    ));
 
-                // Upload to Cloudinary
-                var uploadParams = new ImageUploadParams()
-                {
-                    File = new FileDescription(profilePicture.FileName, profilePicture.OpenReadStream()),
-                    PublicId = $"profile_pictures/{Guid.NewGuid()}"
-                };
-                var uploadResult = await cloudinary.UploadAsync(uploadParams);
+                    // Upload to Cloudinary
+                    var uploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(profilePicture.FileName, profilePicture.OpenReadStream()),
+                        PublicId = $"profile_pictures/{Guid.NewGuid()}"
+                    };
+                    var uploadResult = await cloudinary.UploadAsync(uploadParams);
 
-                if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
-                {
-                    user.ProfilePictureUrl = uploadResult.SecureUrl.ToString();
-                    _userService.Save(user);
+                    if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        user.ProfilePictureUrl = uploadResult.SecureUrl.ToString();
+                        _userService.Save(user);
+                    }
+                    else
+                    {
+                        return BadRequest(new { error = "Failed to upload profile picture." });
+                    }
                 }
-                else
-                {
-                    return BadRequest(new { error = "Failed to upload profile picture." });
-                }
-            }
                 return Ok(new { user.Id, user.Username, user.Name, user.ProfilePictureUrl });
             }
             catch (KeyNotFoundException ex)

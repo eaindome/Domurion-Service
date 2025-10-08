@@ -166,8 +166,13 @@ namespace Domurion.Controllers
                 .Select(c => new
                 {
                     c.Site,
+                    c.SiteUrl,
                     c.Username,
+                    c.Email,
                     Password = _passwordVaultService.RetrievePassword(c.Id, user.Id),
+                    c.Notes,
+                    c.CreatedAt,
+                    c.UpdatedAt
                 });
             return Ok(credentials);
         }
@@ -182,34 +187,58 @@ namespace Domurion.Controllers
             var imported = new List<object>();
             foreach (var cred in credentials)
             {
+                var (isValid, identifier, errors) = ValidateImportRow(cred);
+                if (!isValid)
+                {
+                    imported.Add(new { cred.Site, cred.SiteUrl, cred.Username, cred.Email, errors });
+                    continue;
+                }
+
                 try
                 {
-                    var c = _passwordVaultService.AddCredential(user!.Id, cred.Site, cred.SiteUrl, cred.Username, cred.Password);
+                    var c = _passwordVaultService.AddCredential(user!.Id, cred.Site!, cred.SiteUrl, identifier!, cred.Password!, cred.Notes);
                     imported.Add(new { c.Id, c.Site, c.Username, c.SiteUrl });
                 }
                 catch (Exception ex)
                 {
-                    imported.Add(new { cred.Site, cred.Username, cred.SiteUrl, error = ex.Message });
+                    imported.Add(new { cred.Site, cred.SiteUrl, cred.Username, cred.Email, error = ex.Message });
                 }
             }
             return Ok(imported);
         }
 
-        [HttpDelete("delete-all-vault-data")]
+        private static (bool isValid, string? identifier, List<string> errors) ValidateImportRow(ImportCredentialDto cred)
+        {
+            var errors = new List<string>();
+            if (string.IsNullOrWhiteSpace(cred.Site))
+                errors.Add("Missing site field");
+
+            var identifier = !string.IsNullOrWhiteSpace(cred.Username) ? cred.Username : cred.Email;
+            if (string.IsNullOrWhiteSpace(identifier))
+                errors.Add("Missing username/email");
+
+            if (string.IsNullOrWhiteSpace(cred.Password))
+                errors.Add("Missing password");
+
+            return (errors.Count == 0, identifier, errors);
+        }
+
+        [HttpDelete("delete-all")]
         [Authorize]
         public IActionResult DeleteAllVaultData()
         {
             var validationResult = ValidateAndGetUser(out var user);
             if (validationResult != null) return validationResult;
-            
-            try 
+
+            try
             {
                 var deletedCount = _passwordVaultService.DeleteAllUserVaultItems(user!.Id.ToString());
-                
+
                 // Also delete user settings if needed
                 _userService.ResetUserSettings(user.Id.ToString());
-                
-                return Ok(new { 
+
+                return Ok(new
+                {
                     message = "All vault data has been deleted",
                     deletedCount = deletedCount
                 });

@@ -84,7 +84,7 @@ namespace Domurion.Services
             if (siteUrl != null)
                 credential.SiteUrl = siteUrl;
             if (email != null)
-                    credential.Email = email;
+                credential.Email = email;
             if (password != null)
             {
                 if (!Helper.IsStrongPassword(password))

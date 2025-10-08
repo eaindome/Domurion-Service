@@ -26,7 +26,7 @@ namespace Domurion.Controllers
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
-        [HttpGet("/signin-google")]
+        [HttpGet("signin-google")]
         [AllowAnonymous]
         public async Task<IActionResult> GoogleResponse(string? returnUrl = null)
         {
