@@ -166,7 +166,7 @@
         Ready to secure your digital life?
       </h2>
       <p class="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
-        Join thousands of users who trust Domurion to keep their passwords safe and accessible.
+        Your personal password vault — built for privacy and simplicity.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
         <a href="/register" class="bg-white hover:bg-gray-50 text-indigo-600 px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105">
