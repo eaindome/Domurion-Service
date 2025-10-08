@@ -1,11 +1,14 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace Domurion.Helpers
 {
-    public class EmailService(IConfiguration config)
+    public class EmailService(IConfiguration config, ILogger<EmailService> logger)
     {
         private readonly IConfiguration _config = config;
+        private readonly ILogger<EmailService> logger = logger;
 
         public void SendEmail(string to, string subject, string body, bool isHtml = false)
         {
@@ -14,6 +17,7 @@ namespace Domurion.Helpers
             var smtpUser = _config["Smtp:Username"];
             var smtpPass = _config["Smtp:Password"];
             var from = _config["Smtp:From"] ?? smtpUser;
+            logger.LogInformation($"Sending email from {from} to {to} with subject {subject}");
             if (string.IsNullOrWhiteSpace(from))
             {
                 throw new InvalidOperationException("Sender email address ('Smtp:From' or 'Smtp:Username') is not configured.");

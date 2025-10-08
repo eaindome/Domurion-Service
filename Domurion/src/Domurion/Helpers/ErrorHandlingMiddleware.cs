@@ -34,7 +34,7 @@ namespace Domurion.Helpers
                 code = HttpStatusCode.Unauthorized;
                 errorMessage = "Unauthorized access.";
             }
-            
+
             var result = JsonSerializer.Serialize(new { error = errorMessage });
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)code;

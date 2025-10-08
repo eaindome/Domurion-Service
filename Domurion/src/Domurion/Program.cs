@@ -39,6 +39,10 @@ builder.Services.AddScoped<IPreferencesService, PreferencesService>();
 builder.Services.AddScoped<PasswordVaultService>();
 builder.Services.AddScoped<IPasswordVaultService, PasswordVaultService>();
 builder.Services.AddScoped<Domurion.Helpers.EmailService>();
+// New email infrastructure (queue + MailKit sender + background worker)
+builder.Services.AddSingleton<Domurion.Helpers.IEmailQueue, Domurion.Helpers.InMemoryEmailQueue>();
+builder.Services.AddSingleton<Domurion.Helpers.MailKitEmailSender>();
+builder.Services.AddHostedService<Domurion.Helpers.BackgroundEmailSender>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
