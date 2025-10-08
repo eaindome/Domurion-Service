@@ -3,6 +3,7 @@
 
 	// Create event dispatcher
 	import { createEventDispatcher } from 'svelte';
+	import { exportVaultData, importVaultData, deleteAllVaultData } from '$lib/api/vault';
 	const dispatch = createEventDispatcher<{
 		success: { message: string };
 		error: { message: string };
@@ -10,22 +11,29 @@
 	}>();
 
 	let importFile: FileList | null = null;
+	let isExporting = false;
+	let isImporting = false;
+	let isDeleting = false;
+	let showDeleteModal = false;
 
 	async function exportData() {
+		isExporting = true;
 		dispatch('loading', { isLoading: true });
 
-		try {
-			// Simulate export process
-			await new Promise(resolve => setTimeout(resolve, 2000));
-			
-			// In a real implementation, this would call an API to export vault data
-			const exportData = {
-				vaultItems: [],
-				settings: {},
-				exportDate: new Date().toISOString()
-			};
+			try {
+				// Call backend to get actual vault export
+				const res = await exportVaultData();
+				if (!res.success || !res.data) {
+					throw new Error(res.error || 'Failed to fetch export data');
+				}
 
-			const dataStr = JSON.stringify(exportData, null, 2);
+				// Build export payload
+				const exportData = {
+					vaultItems: res.data,
+					exportDate: new Date().toISOString()
+				};
+
+				const dataStr = JSON.stringify(exportData, null, 2);
 			const dataBlob = new Blob([dataStr], { type: 'application/json' });
 			const url = URL.createObjectURL(dataBlob);
 			
@@ -41,6 +49,7 @@
 			dispatch('error', { message: 'Failed to export vault data.' });
 			console.error('Error exporting data:', error);
 		} finally {
+			isExporting = false;
 			dispatch('loading', { isLoading: false });
 		}
 	}
@@ -51,51 +60,57 @@
 			return;
 		}
 
+		isImporting = true;
 		dispatch('loading', { isLoading: true });
 
 		try {
-			const file = importFile[0];
-			const text = await file.text();
-			const data = JSON.parse(text);
+				const file = importFile[0];
+				const text = await file.text();
+				const data = JSON.parse(text);
 
-			// Validate the data structure
-			if (!data.vaultItems || !Array.isArray(data.vaultItems)) {
-				throw new Error('Invalid file format');
-			}
+				// Validate the data structure
+				if (!data.vaultItems || !Array.isArray(data.vaultItems)) {
+					throw new Error('Invalid file format');
+				}
 
-			// In a real implementation, this would call an API to import the data
-			await new Promise(resolve => setTimeout(resolve, 2000));
-
-			dispatch('success', { message: `Successfully imported ${data.vaultItems.length} vault items!` });
-			
-			// Reset file input
-			importFile = null;
+				// Call backend import API
+				const res = await importVaultData(data.vaultItems);
+				if (res.success) {
+					dispatch('success', { message: `Successfully imported ${data.vaultItems.length} vault items!` });
+					importFile = null;
+				} else {
+					dispatch('error', { message: res.error || 'Failed to import vault data.' });
+				}
 		} catch (error) {
 			dispatch('error', { message: 'Failed to import vault data. Please check the file format.' });
 			console.error('Error importing data:', error);
 		} finally {
+			isImporting = false;
 			dispatch('loading', { isLoading: false });
 		}
 	}
 
-	async function deleteAllData() {
-		const confirmed = confirm(
-			'Are you sure you want to delete all your vault data? This action cannot be undone.'
-		);
-		
-		if (!confirmed) return;
+	function openDeleteModal() {
+		showDeleteModal = true;
+	}
 
+	async function deleteAllData() {
+		isDeleting = true;
 		dispatch('loading', { isLoading: true });
 
 		try {
-			// In a real implementation, this would call an API to delete all data
-			await new Promise(resolve => setTimeout(resolve, 1500));
-			
-			dispatch('success', { message: 'All vault data has been deleted.' });
+				const res = await deleteAllVaultData();
+				if (res.success) {
+					dispatch('success', { message: res.message || 'All vault data has been deleted.' });
+				} else {
+					dispatch('error', { message: res.error || 'Failed to delete vault data.' });
+				}
 		} catch (error) {
 			dispatch('error', { message: 'Failed to delete vault data.' });
 			console.error('Error deleting data:', error);
 		} finally {
+			isDeleting = false;
+			showDeleteModal = false;
 			dispatch('loading', { isLoading: false });
 		}
 	}
@@ -113,10 +128,10 @@
 			</p>
 			<button
 				on:click={exportData}
-				disabled={isLoading}
+				disabled={isExporting || isLoading}
 				class="rounded-xl bg-green-600 px-4 py-2 text-white transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600 flex items-center justify-center"
 			>
-				{#if isLoading}
+				{#if isExporting}
 					<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -143,10 +158,10 @@
 				/>
 				<button
 					on:click={importData}
-					disabled={isLoading || !importFile}
+					disabled={isImporting || isLoading || !importFile}
 					class="rounded-xl bg-blue-600 px-4 py-2 text-white transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 flex items-center justify-center"
 				>
-					{#if isLoading}
+					{#if isImporting}
 						<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -166,20 +181,61 @@
 				Permanently delete all your vault data. This action cannot be undone.
 			</p>
 			<button
-				on:click={deleteAllData}
-				disabled={isLoading}
+				type="button"
+				on:click={openDeleteModal}
 				class="rounded-xl bg-red-600 px-4 py-2 text-white transition-all duration-200 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-600 flex items-center justify-center"
 			>
-				{#if isLoading}
-					<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-					</svg>
-					Deleting...
-				{:else}
-					Delete All Data
-				{/if}
+				Delete All Data
 			</button>
 		</div>
 	</div>
 </div>
+
+<!-- Custom Delete Data Confirmation Modal -->
+{#if showDeleteModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+		<div class="bg-white rounded-3xl shadow-2xl border border-gray-200 max-w-md w-full p-8 transform transition-all">
+			<!-- Warning Icon -->
+			<div class="flex items-center justify-center w-16 h-16 mx-auto mb-6 bg-red-100 rounded-full">
+				<svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+				</svg>
+			</div>
+			
+			<!-- Modal Content -->
+			<div class="text-center mb-8">
+				<h3 class="text-2xl font-bold text-gray-900 mb-3">Delete All Data?</h3>
+				<p class="text-gray-600 leading-relaxed">
+					This will permanently delete <strong>ALL</strong> your data. Are you absolutely sure?
+				</p>
+			</div>
+			
+			<!-- Action Buttons -->
+			<div class="flex flex-col-reverse sm:flex-row gap-3">
+				<button
+					on:click={() => showDeleteModal = false}
+					class="flex-1 px-6 py-3 text-gray-700 bg-gray-100 rounded-xl font-medium transition-all duration-200 hover:bg-gray-200 focus:ring-4 focus:ring-gray-300 focus:outline-none"
+				>
+					Cancel
+				</button>
+				<button
+					on:click={deleteAllData}
+					disabled={isDeleting || isLoading}
+					class="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-medium transition-all duration-200 hover:bg-red-700 focus:ring-4 focus:ring-red-300 focus:outline-none shadow-lg hover:shadow-xl"
+				>
+					<span class="flex items-center justify-center">
+						{#if isDeleting}
+							<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+							Deleting...
+						{:else}
+							Delete Forever
+						{/if}
+					</span>
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

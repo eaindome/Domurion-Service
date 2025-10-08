@@ -55,6 +55,7 @@
 			
 			// Load 2FA status
 			const twoFactorStatus = await get2FAStatus();
+			console.log('2FA status:', twoFactorStatus);
 			
 			// Map backend data to frontend state
 			securitySettings = {
@@ -63,6 +64,7 @@
 				autoLock: prefs.autoLockEnabled ?? true,
 				loginNotifications: prefs.loginNotificationsEnabled ?? true
 			};
+			console.log('Loaded security settings:', securitySettings);
 		} catch (error) {
 			dispatch('error', { message: 'Failed to load security settings.' });
 			console.error('Error loading security settings:', error);
@@ -72,31 +74,40 @@
 		}
 	}
 
-	async function toggle2FA() {
-		if (isToggling2FA) return;
-		
-		isToggling2FA = true;
-		try {
-			if (securitySettings.twoFactorEnabled) {
-				// Disable 2FA - your backend doesn't require a code for disable
-				await disable2FA(''); // Pass empty string since your backend expects it
-				securitySettings.twoFactorEnabled = false;
-				showRecoveryCodes = false;
-				recoveryCodes = [];
-				dispatch('success', { message: '2FA has been disabled.' });
-			} else {
-				// Enable 2FA
-				await enable2FA();
-				securitySettings.twoFactorEnabled = true;
-				dispatch('success', { message: '2FA has been enabled! You will receive OTP codes via email.' });
+	async function toggle2FA(e: Event) {
+			// e.target.checked holds the new state because Svelte's bind updates before the change handler
+			const input = e.target as HTMLInputElement;
+			const wantEnabled = input.checked;
+			if (isToggling2FA) return;
+			console.log('Toggling 2FA, desired state:', wantEnabled);
+
+			isToggling2FA = true;
+			try {
+				if (wantEnabled) {
+					// Enable 2FA
+					const res = await enable2FA();
+					console.debug('enable2FA returned:', res);
+					securitySettings.twoFactorEnabled = true;
+					dispatch('success', { message: '2FA has been enabled! You will receive OTP codes via email.' });
+				} else {
+					// Disable 2FA - your backend doesn't require a code for disable
+					const res = await disable2FA(''); // Pass empty string since your backend expects it
+					console.debug('disable2FA returned:', res);
+					securitySettings.twoFactorEnabled = false;
+					showRecoveryCodes = false;
+					recoveryCodes = [];
+					dispatch('success', { message: '2FA has been disabled.' });
+				}
+			} catch (error) {
+				// Revert the UI toggle because the operation failed
+				securitySettings.twoFactorEnabled = !wantEnabled;
+				const err = error as Error;
+				console.error('Error toggling 2FA:', err, 'message:', err.message, 'stack:', err.stack);
+				dispatch('error', { message: `Failed to ${wantEnabled ? 'enable' : 'disable'} 2FA. ${err.message}` });
+			} finally {
+				isToggling2FA = false;
 			}
-		} catch (error) {
-			dispatch('error', { message: `Failed to ${securitySettings.twoFactorEnabled ? 'disable' : 'enable'} 2FA.` });
-			console.error('Error toggling 2FA:', error);
-		} finally {
-			isToggling2FA = false;
 		}
-	}
 
 	async function handleGenerateRecoveryCodes() {
 		try {

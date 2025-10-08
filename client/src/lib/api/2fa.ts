@@ -7,10 +7,26 @@ export async function enable2FA(): Promise<{ secret: string; qrCode: string }> {
 		headers: { 'Content-Type': 'application/json' },
 		credentials: 'include'
 	});
+	const text = await response.text();
+	console.debug('enable2FA response text:', text);
 	if (!response.ok) {
-		throw new Error('Failed to enable 2FA');
+		let errorMessage = 'Failed to enable 2FA';
+		try {
+			const data = JSON.parse(text);
+			errorMessage = data?.message || data?.error || text || errorMessage;
+		} catch {
+			errorMessage = text || errorMessage;
+		}
+		throw new Error(errorMessage);
 	}
-	return response.json();
+	if (!text) return { secret: '', qrCode: '' };
+	try {
+		const parsed = JSON.parse(text);
+		return { secret: parsed?.secret || '', qrCode: parsed?.qrCode || '' };
+	} catch {
+		// If response isn't JSON, return raw text in qrCode for debugging
+		return { secret: '', qrCode: text };
+	}
 }
 
 // Verify 2FA: pass TOTP code, returns success message
@@ -21,11 +37,26 @@ export async function verify2FA(code: string): Promise<string> {
 		body: JSON.stringify(code),
 		credentials: 'include'
 	});
+	const text = await response.text();
+	console.debug('verify2FA response text:', text);
 	if (!response.ok) {
-		const data = await response.json();
-		throw new Error(data?.message || data || 'Failed to verify 2FA');
+		let errorMessage = 'Failed to verify 2FA';
+		try {
+			const data = JSON.parse(text);
+			errorMessage = data?.message || data?.error || text || errorMessage;
+		} catch {
+			errorMessage = text || errorMessage;
+		}
+		throw new Error(errorMessage);
 	}
-	return response.text();
+	if (!text) return '';
+	try {
+		const parsed = JSON.parse(text);
+		if (typeof parsed === 'string') return parsed;
+		return parsed?.message || JSON.stringify(parsed);
+	} catch {
+		return text;
+	}
 }
 
 // Disable 2FA: pass TOTP code, returns success message
@@ -36,11 +67,26 @@ export async function disable2FA(code: string): Promise<string> {
 		body: JSON.stringify(code),
 		credentials: 'include'
 	});
+	const text = await response.text();
+	console.debug('disable2FA response text:', text);
 	if (!response.ok) {
-		const data = await response.json();
-		throw new Error(data?.message || data || 'Failed to disable 2FA');
+		let errorMessage = 'Failed to disable 2FA';
+		try {
+			const data = JSON.parse(text);
+			errorMessage = data?.message || data?.error || text || errorMessage;
+		} catch {
+			errorMessage = text || errorMessage;
+		}
+		throw new Error(errorMessage);
 	}
-	return response.text();
+	if (!text) return '';
+	try {
+		const parsed = JSON.parse(text);
+		if (typeof parsed === 'string') return parsed;
+		return parsed?.message || JSON.stringify(parsed);
+	} catch {
+		return text;
+	}
 }
 
 // Generate new recovery codes (returns array of codes)
