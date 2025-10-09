@@ -178,6 +178,11 @@
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="space-y-6 p-6" autocomplete="off">
+	<!-- Autofill trap: browsers will fill these hidden fields instead of your real form inputs -->
+	<input autocomplete="username" name="fake-username" type="text" tabindex="-1"
+		style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;" />
+	<input autocomplete="current-password" name="fake-password" type="password" tabindex="-1"
+		style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;" />
 	<!-- Auto-save Status Indicator -->
 	{#if autoSaveEnabled && autoSaveInstance}
 		<div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
@@ -264,8 +269,10 @@
 			Email *
 		</label>
 		<input
-			type="text"
+			type="email"
 			id="email"
+			name="vault-entry-email"
+			autocomplete="off"
 			bind:value={formData.email}
 			on:keydown={(e) => handleKeyDown(e, 'password')}
 			placeholder="your-username or email@example.com"
@@ -299,6 +306,8 @@
 			<input
 				type={showPassword ? 'text' : 'password'}
 				id="password"
+				name="vault-entry-password"
+				autocomplete="new-password"
 				bind:value={formData.password}
 				on:keydown={(e) => handleKeyDown(e, 'notes')}
 				placeholder="Enter or generate a secure password"

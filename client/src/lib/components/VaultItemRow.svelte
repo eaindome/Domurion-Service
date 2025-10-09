@@ -122,14 +122,27 @@
 	// Request OTP for viewing credential
 	async function requestOtpCode(): Promise<void> {
 		if (requestingOtp) return;
-		
+
+		// If user has already entered digits, clear them when resending
+		if (twoFACodeDigits.some(d => d !== '')) {
+			twoFACodeDigits = ['', '', '', '', '', ''];
+			// Clear the actual input elements too
+			codeInputs.forEach((el) => {
+				if (el) el.value = '';
+			});
+		}
+
 		requestingOtp = true;
 		twoFAError = '';
-		
+
 		try {
 			await requestViewOtp(item.id);
 			otpRequested = true;
 			toast.show('OTP sent to your email', 'success');
+			// focus first input so user can type immediately
+			setTimeout(() => {
+				codeInputs[0]?.focus();
+			}, 50);
 		} catch (error) {
 			console.error('Error requesting OTP:', error);
 			twoFAError = error instanceof Error ? error.message : 'Failed to request OTP';
