@@ -331,7 +331,7 @@
 				</svg>
 			</button>
 			<!-- Share button -->
-			<button
+			<!-- <button
 				on:click={() => showShareModal = true}
 				class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
 				title="Share entry"
@@ -340,7 +340,7 @@
 				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 8a3 3 0 11-6 0 3 3 0 016 0zm6 8a6 6 0 00-12 0v1a3 3 0 003 3h6a3 3 0 003-3v-1z"/>
 				</svg>
-			</button>
+			</button> -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
 				href={`/vault/${item.id}/edit`}
