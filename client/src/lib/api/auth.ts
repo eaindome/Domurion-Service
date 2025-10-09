@@ -50,9 +50,9 @@ export async function login(email: string, password: string): Promise<{
     if (response.ok) {
         try {
             const data = await response.json();
-            if (data.token) {
-                setTokenCookie(data.token);
-            }
+            // if (data.token) {
+            //     setTokenCookie(data.token);
+            // }
             return { success: true, user: data.user };
         } catch (err) {
             console.log(`Error parsing login response: ${err}`);
@@ -82,9 +82,9 @@ export async function register(email: string, password: string, name?: string): 
     if (response.ok) {
         try {
             const data = await response.json();
-            if (data.token) {
-                setTokenCookie(data.token);
-            }
+            // if (data.token) {
+            //     setTokenCookie(data.token);
+            // }
             return { success: true };
         } catch (err) {
             console.log(`Error during registration: ${err}`)
@@ -114,7 +114,8 @@ export async function verifyOtp(email: string, otp: string): Promise<{
         response = await fetchWithAuth(`${API_BASE}/api/users/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, otp })
+            body: JSON.stringify({ email, otp }),
+            credentials: 'include'
         });
     } catch (err) {
         console.log(`Error during OTP verification fetch: ${err}`);
@@ -129,9 +130,9 @@ export async function verifyOtp(email: string, otp: string): Promise<{
     if (response.ok) {
         try {
             const data = await response.json();
-            if (data.token) {
-                setTokenCookie(data.token);
-            }
+            // if (data.token) {
+            //     setTokenCookie(data.token);
+            // }
             return { 
                 success: true, 
                 user: { 
@@ -165,7 +166,8 @@ export async function resendOtp(email: string): Promise<{
         response = await fetchWithAuth(`${API_BASE}/api/users/resend-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(email)
+            body: JSON.stringify(email),
+            credentials: 'include'
         });
     } catch (err) {
         console.log(`Error during resend OTP fetch: ${err}`);
