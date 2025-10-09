@@ -4,7 +4,7 @@ import { fetchWithAuth } from '$lib/utils/fetchWithAuth';
 // Helper to set JWT token in cookies
 function setTokenCookie(token: string) {
     // Set cookie for 7 days, secure, sameSite strict
-    document.cookie = `access_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=strict`; // secure; 
+    document.cookie = `access_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=none`; // secure; 
 }
 
 // Redirects user to backend Google OAuth endpoint
